@@ -95,16 +95,16 @@ def bench_jax(model_type, hidden, seq_len, batch, rank, device='cpu', n_warmup=5
     # Warmup — includes JIT compilation; on CUDA also covers first-kernel overhead.
     t_compile_start = time.perf_counter()
     for _ in range(n_warmup):
-        train_step(model, optimizer, data)
-    jax.effects_barrier()
+        loss = train_step(model, optimizer, data)
+        loss.block_until_ready()       # correct sync for both CPU and CUDA
     compile_ms = (time.perf_counter() - t_compile_start) * 1000
 
     # Timed steps
     step_times = []
     for _ in range(n_steps):
         t0 = time.perf_counter()
-        train_step(model, optimizer, data)
-        jax.effects_barrier()          # block until GPU work is done
+        loss = train_step(model, optimizer, data)
+        loss.block_until_ready()       # block until compute is done (not just dispatch)
         step_times.append((time.perf_counter() - t0) * 1000)
 
     stats = {

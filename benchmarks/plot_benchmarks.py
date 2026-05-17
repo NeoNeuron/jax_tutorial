@@ -168,9 +168,9 @@ def plot_speedup(all_records):
     fig.suptitle('JAX Speedup over PyTorch  (PyTorch ms / JAX ms, same device)',
                  fontsize=12, fontweight='bold')
 
-    for ax, ratios, labels, device, color in [
-        (axes[0], cpu_ratios,  cpu_labels,  'CPU',  '#2196F3'),
-        (axes[1], cuda_ratios, cuda_labels, 'CUDA', '#0D47A1'),
+    for ax, ratios, labels, device, color, use_log in [
+        (axes[0], cpu_ratios,  cpu_labels,  'CPU',  '#2196F3', True),
+        (axes[1], cuda_ratios, cuda_labels, 'CUDA', '#0D47A1', False),
     ]:
         if not ratios:
             ax.set_visible(False)
@@ -189,11 +189,22 @@ def plot_speedup(all_records):
                       fontsize=9)
         ax.set_title(f'{device}  —  JAX lax.scan vs PyTorch loop', fontsize=10, fontweight='bold')
         ax.grid(True, axis='x', alpha=0.3)
-        ax.set_xlim(0, max(ratios) * 1.15)
-        for bar, val in zip(bars, ratios):
-            ax.text(bar.get_width() + max(ratios) * 0.01,
-                    bar.get_y() + bar.get_height() / 2,
-                    f'{val:.1f}×', va='center', fontsize=8)
+        if use_log:
+            ax.set_xscale('log')
+            all_pos = [v for v in ratios if v > 0]
+            lo = min(all_pos) * 0.5
+            hi = max(all_pos) * 1.8
+            ax.set_xlim(lo, hi)
+            ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+            for bar, val in zip(bars, ratios):
+                ax.text(val * 1.04, bar.get_y() + bar.get_height() / 2,
+                        f'{val:.2f}×', va='center', fontsize=8)
+        else:
+            ax.set_xlim(0, max(ratios) * 1.15)
+            for bar, val in zip(bars, ratios):
+                ax.text(bar.get_width() + max(ratios) * 0.01,
+                        bar.get_y() + bar.get_height() / 2,
+                        f'{val:.1f}×', va='center', fontsize=8)
         from matplotlib.patches import Patch
         ax.legend(handles=[
             Patch(color='#2196F3', label='Low-rank RNN'),
