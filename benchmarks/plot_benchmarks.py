@@ -360,6 +360,135 @@ def plot_cuda(all_records):
 
 
 # ---------------------------------------------------------------------------
+# Figure 5 — large-scale hidden sweep (batch=512, seq_len=100)
+# ---------------------------------------------------------------------------
+
+def plot_largescale(all_records):
+    """
+    Hidden size swept from 64→2048 at batch=512. Two panels:
+      Left:  log-scale step time vs hidden size (JAX CPU, Torch CPU, Torch MPS, Torch CUDA)
+      Right: speedup over PyTorch CPU at each hidden size
+    """
+    BATCH, SEQ = 512, 100
+    hiddens = [64, 128, 256, 512, 1024, 2048]
+
+    combos = [
+        ('jax',   'cpu',  STYLE[('jax',   'cpu')]),
+        ('torch', 'cpu',  STYLE[('torch', 'cpu')]),
+        ('torch', 'gpu',  STYLE[('torch', 'gpu')]),
+        ('torch', 'cuda', STYLE[('torch', 'cuda')]),
+    ]
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5.5))
+    fig.suptitle(
+        f'Large-scale hidden sweep  (batch={BATCH}, seq_len={SEQ}, vanilla RNN)',
+        fontsize=12, fontweight='bold')
+
+    # ── Left: absolute step times (log y) ────────────────────────────────
+    ax = axes[0]
+    for fw, dev, sty in combos:
+        recs = select(all_records, framework=fw, device=dev,
+                      model='vanilla', seq_len=SEQ, batch=BATCH)
+        if not recs:
+            continue
+        recs = sorted(recs, key=lambda r: r['hidden'])
+        xs  = [r['hidden']     for r in recs]
+        ys  = [r['median_ms']  for r in recs]
+        lo  = [r['median_ms'] - r['min_ms']  for r in recs]
+        hi  = [r['max_ms']    - r['median_ms'] for r in recs]
+        ax.errorbar(xs, ys, yerr=[lo, hi],
+                    color=sty['color'], ls=sty['ls'], marker=sty['marker'],
+                    ms=6, lw=2, capsize=3, label=sty['label'])
+        ax.fill_between(xs,
+                         [y - l for y, l in zip(ys, lo)],
+                         [y + h for y, h in zip(ys, hi)],
+                         color=sty['color'], alpha=ALPHA_BAND)
+
+    ax.set_yscale('log')
+    ax.set_xscale('log', base=2)
+    ax.set_xticks(hiddens)
+    ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+    ax.yaxis.set_major_formatter(ticker.ScalarFormatter())
+    ax.set_xlabel('Hidden size', fontsize=10)
+    ax.set_ylabel('Median step time (ms, log scale)', fontsize=10)
+    ax.set_title('A  Step time vs hidden size', fontsize=10, fontweight='bold')
+    ax.legend(fontsize=8)
+    ax.grid(True, which='both', alpha=0.25)
+
+    # Annotate crossover where MPS beats CPU
+    mps_recs   = {r['hidden']: r for r in select(all_records, framework='torch',
+                  device='gpu', model='vanilla', seq_len=SEQ, batch=BATCH)}
+    cpu_recs   = {r['hidden']: r for r in select(all_records, framework='torch',
+                  device='cpu', model='vanilla', seq_len=SEQ, batch=BATCH)}
+    crossovers = [h for h in hiddens
+                  if h in mps_recs and h in cpu_recs
+                  and mps_recs[h]['median_ms'] < cpu_recs[h]['median_ms']]
+    if crossovers:
+        x0 = crossovers[0]
+        ax.axvline(x0, color='grey', lw=1, ls=':', alpha=0.7)
+        ax.text(x0 * 1.05, ax.get_ylim()[0] * 1.5,
+                f'MPS < CPU\n(h≥{x0})', fontsize=7.5, color='grey', va='bottom')
+
+    # ── Right: speedup over PyTorch CPU ──────────────────────────────────
+    ax2 = axes[1]
+    ref = {r['hidden']: r['median_ms']
+           for r in select(all_records, framework='torch', device='cpu',
+                           model='vanilla', seq_len=SEQ, batch=BATCH)}
+    if not ref:
+        ax2.set_visible(False)
+    else:
+        speedup_combos = [
+            ('jax',   'cpu',  STYLE[('jax',   'cpu')],  'JAX CPU / PyTorch CPU'),
+            ('torch', 'gpu',  STYLE[('torch', 'gpu')],  'PyTorch MPS / PyTorch CPU'),
+            ('torch', 'cuda', STYLE[('torch', 'cuda')], 'PyTorch CUDA / PyTorch CPU'),
+            ('jax',   'cuda', STYLE[('jax',   'cuda')], 'JAX CUDA / PyTorch CPU'),
+        ]
+        x = np.arange(len(hiddens))
+        bw = 0.18
+        offsets = np.linspace(-(len(speedup_combos)-1)/2, (len(speedup_combos)-1)/2,
+                              len(speedup_combos)) * bw
+
+        for (fw, dev, sty, lbl), offset in zip(speedup_combos, offsets):
+            recs_d = {r['hidden']: r['median_ms']
+                      for r in select(all_records, framework=fw, device=dev,
+                                      model='vanilla', seq_len=SEQ, batch=BATCH)}
+            ratios = [ref.get(h, None) / recs_d.get(h, None)
+                      if (h in ref and h in recs_d) else None
+                      for h in hiddens]
+            valid_x = [x[i] + offset for i, v in enumerate(ratios) if v is not None]
+            valid_r = [v for v in ratios if v is not None]
+            if valid_r:
+                ax2.bar(valid_x, valid_r, width=bw * 0.9,
+                        color=sty['color'], label=lbl, alpha=0.85)
+
+        ax2.axhline(1.0, color='grey', lw=1, ls='--')
+        ax2.set_xticks(x)
+        ax2.set_xticklabels([str(h) for h in hiddens])
+        ax2.set_xlabel('Hidden size', fontsize=10)
+        ax2.set_ylabel('Speedup over PyTorch CPU  (higher = faster)', fontsize=10)
+        ax2.set_title('B  Speedup over PyTorch CPU', fontsize=10, fontweight='bold')
+        ax2.legend(fontsize=8)
+        ax2.grid(True, axis='y', alpha=0.3)
+        ax2.set_yscale('log')
+        ax2.yaxis.set_major_formatter(ticker.ScalarFormatter())
+
+    # Note about pending CUDA data
+    cuda_present = any(r['device'] == 'cuda' and r['batch'] == BATCH
+                       and r['model'] == 'vanilla' and r['seq_len'] == SEQ
+                       for r in all_records)
+    if not cuda_present:
+        fig.text(0.5, -0.03,
+                 'CUDA results at batch=512 pending — run on remote GPU server:\n'
+                 'for h in 64 128 256 512 1024 2048; do python benchmarks/run_benchmarks.py '
+                 '--device cuda --framework both --model vanilla --hidden $h --seq-len 100 --batch 512; done',
+                 ha='center', fontsize=7.5, color='grey', style='italic',
+                 transform=fig.transFigure)
+
+    plt.tight_layout()
+    _savefig(fig, 'benchmark_largescale')
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -385,6 +514,7 @@ if __name__ == '__main__':
 
     plot_sweeps(records)
     plot_speedup(records)
+    plot_largescale(records)
     plot_cpu_vs_mps(records)
     plot_cuda(records)
     print('Done.')
