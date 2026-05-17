@@ -369,7 +369,7 @@ def plot_largescale(all_records):
       Left:  log-scale step time vs hidden size (JAX CPU, Torch CPU, Torch MPS, Torch CUDA)
       Right: speedup over PyTorch CPU at each hidden size
     """
-    BATCH, SEQ = 512, 100
+    BATCH, SEQ = 512, 500
     hiddens = [64, 128, 256, 512, 1024, 2048]
 
     combos = [
