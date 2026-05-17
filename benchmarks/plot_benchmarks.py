@@ -374,6 +374,7 @@ def plot_largescale(all_records):
 
     combos = [
         ('jax',   'cpu',  STYLE[('jax',   'cpu')]),
+        ('jax',   'cuda', STYLE[('jax',   'cuda')]),
         ('torch', 'cpu',  STYLE[('torch', 'cpu')]),
         ('torch', 'gpu',  STYLE[('torch', 'gpu')]),
         ('torch', 'cuda', STYLE[('torch', 'cuda')]),
