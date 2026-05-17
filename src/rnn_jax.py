@@ -3,7 +3,7 @@ RNN models built with flax.nnx.
 
 Two architectures:
   - VanillaRNN   : standard Elman RNN with tanh nonlinearity
-  - LowRankRNN   : recurrent weight constrained to rank-r  (W_rec = U @ V.T)
+  - LowRankRNN   : recurrent weight constrained to rank-r  (J = M @ N.T)
 
 Both use jax.lax.scan for sequential computation so they are JIT-compilable,
 differentiable, and work with jax.vmap over batches.
@@ -28,12 +28,23 @@ import flax.nnx as nnx
 # ---------------------------------------------------------------------------
 
 class VanillaRNNCell(nnx.Module):
-    """Single Elman RNN step: h_t = tanh(W [h_{t-1}; x_t] + b)."""
+    """Single leaky RNN step:
+        h_t = (1-α) h_{t-1} + α (W tanh(h_{t-1}) + W_in x_t + b)
 
-    def __init__(self, input_size: int, hidden_size: int, rngs: nnx.Rngs) -> None:
+    W, W_in, b are stored as nnx.Param with shapes matching the column-vector
+    convention of the formula: W ∈ R^{N×N}, W_in ∈ R^{N×I}.
+    In JAX row-vector code: tanh(h) @ W.T  and  x @ W_in.T.
+    """
+
+    def __init__(
+        self, input_size: int, hidden_size: int, rngs: nnx.Rngs, alpha: float = 0.2
+    ) -> None:
         self.hidden_size = hidden_size
-        # fused linear: maps [h; x] -> hidden
-        self.linear = nnx.Linear(hidden_size + input_size, hidden_size, rngs=rngs)
+        self.alpha = alpha
+        init = nnx.initializers.normal(stddev=1.0 / (hidden_size ** 0.5))
+        self.W    = nnx.Param(init(rngs.params(), (hidden_size, hidden_size)))
+        self.W_in = nnx.Param(init(rngs.params(), (hidden_size, input_size)))
+        self.b    = nnx.Param(jnp.zeros((hidden_size,)))
 
     def __call__(self, h: jax.Array, x: jax.Array) -> jax.Array:
         """
@@ -43,7 +54,8 @@ class VanillaRNNCell(nnx.Module):
         Returns:
             h_new: updated hidden state, shape (..., hidden_size)
         """
-        return jnp.tanh(self.linear(jnp.concatenate([h, x], axis=-1)))
+        pre = jnp.tanh(h) @ self.W.T + x @ self.W_in.T + self.b
+        return (1.0 - self.alpha) * h + self.alpha * pre
 
 
 class VanillaRNN(nnx.Module):
@@ -55,8 +67,10 @@ class VanillaRNN(nnx.Module):
         outputs, h_final = model(xs)  # xs: (B, T, input_size)
     """
 
-    def __init__(self, input_size: int, hidden_size: int, rngs: nnx.Rngs) -> None:
-        self.cell = VanillaRNNCell(input_size, hidden_size, rngs)
+    def __init__(
+        self, input_size: int, hidden_size: int, rngs: nnx.Rngs, alpha: float = 0.2
+    ) -> None:
+        self.cell = VanillaRNNCell(input_size, hidden_size, rngs, alpha=alpha)
         self.hidden_size = hidden_size
 
     def __call__(
@@ -103,14 +117,15 @@ class LowRankRNNCell(nnx.Module):
     """
     Low-rank RNN cell.
 
-    The recurrent weight matrix is factored as W_rec = U @ V.T where
-    U, V ∈ R^{hidden × rank}.  This constrains network dynamics to an
-    r-dimensional subspace, which is interpretable and analytically tractable
-    (useful in computational neuroscience and systems analysis).
+    The recurrent connectivity matrix is factored as J = M @ N.T where
+    M, N ∈ R^{hidden × rank}, with J_{ij} = Σ_r m_i^(r) n_j^(r).
+    This constrains network dynamics to an r-dimensional subspace, which is
+    interpretable and analytically tractable (useful in computational
+    neuroscience and systems analysis).
 
-    Forward pass:
-        h_t = tanh( h_{t-1} @ V @ U.T  +  x_t @ W_in  +  b )
-             = tanh( W_rec h_{t-1}      +  W_in x_t    +  b )
+    Forward pass (row-vector JAX convention):
+        h_t = (1-α) h_{t-1} + α (tanh(h_{t-1}) @ N @ M.T  +  x @ W_in.T + b)
+             = (1-α) h_{t-1} + α (J tanh(h_{t-1}) + W_in x + b)   [column notation]
     """
 
     def __init__(
@@ -119,14 +134,17 @@ class LowRankRNNCell(nnx.Module):
         hidden_size: int,
         rank: int,
         rngs: nnx.Rngs,
+        alpha: float = 0.2,
     ) -> None:
         self.hidden_size = hidden_size
         self.rank = rank
+        self.alpha = alpha
 
         init = nnx.initializers.normal(stddev=1.0 / (hidden_size ** 0.5))
-        self.U = nnx.Param(init(rngs.params(), (hidden_size, rank)))  # right factor
-        self.V = nnx.Param(init(rngs.params(), (hidden_size, rank)))  # left factor
-        self.W_in = nnx.Linear(input_size, hidden_size, use_bias=True, rngs=rngs)
+        self.M    = nnx.Param(init(rngs.params(), (hidden_size, rank)))        # left factor of J
+        self.N    = nnx.Param(init(rngs.params(), (hidden_size, rank)))        # right factor of J
+        self.W_in = nnx.Param(init(rngs.params(), (hidden_size, input_size)))  # input weight
+        self.b    = nnx.Param(jnp.zeros((hidden_size,)))                       # bias
 
     def __call__(self, h: jax.Array, x: jax.Array) -> jax.Array:
         """
@@ -136,14 +154,14 @@ class LowRankRNNCell(nnx.Module):
         Returns:
             h_new: shape (..., hidden_size)
         """
-        # h @ V  → (..., rank);  then @ U.T → (..., hidden_size)
-        recurrent = h @ self.V[...] @ self.U[...].T
-        return jnp.tanh(recurrent + self.W_in(x))
+        # tanh(h) @ N → (..., rank);  then @ M.T → (..., hidden_size)
+        pre = jnp.tanh(h) @ self.N @ self.M.T + x @ self.W_in.T + self.b
+        return (1.0 - self.alpha) * h + self.alpha * pre
 
     @property
-    def W_rec(self) -> jax.Array:
-        """Reconstruct the full recurrent weight matrix (hidden, hidden)."""
-        return self.U[...] @ self.V[...].T
+    def J_rec(self) -> jax.Array:
+        """Reconstruct the full recurrent connectivity matrix J = M @ N.T (hidden, hidden)."""
+        return self.M @ self.N.T
 
 
 class LowRankRNN(nnx.Module):
@@ -161,8 +179,9 @@ class LowRankRNN(nnx.Module):
         hidden_size: int,
         rank: int,
         rngs: nnx.Rngs,
+        alpha: float = 0.2,
     ) -> None:
-        self.cell = LowRankRNNCell(input_size, hidden_size, rank, rngs)
+        self.cell = LowRankRNNCell(input_size, hidden_size, rank, rngs, alpha=alpha)
         self.hidden_size = hidden_size
         self.rank = rank
 
@@ -199,13 +218,13 @@ class LowRankRNN(nnx.Module):
         return jnp.zeros((batch_size, self.hidden_size))
 
     @property
-    def W_rec(self) -> jax.Array:
-        return self.cell.W_rec
+    def J_rec(self) -> jax.Array:
+        return self.cell.J_rec
 
     def effective_rank(self) -> int:
-        """Numerical rank of W_rec (should equal self.rank by construction)."""
+        """Numerical rank of J_rec (should equal self.rank by construction)."""
         import numpy as np
-        return int(np.linalg.matrix_rank(np.array(self.W_rec)))
+        return int(np.linalg.matrix_rank(np.array(self.J_rec)))
 
 
 # ---------------------------------------------------------------------------
@@ -235,8 +254,9 @@ class VanillaRNNModel(nnx.Module):
         hidden_size: int,
         output_size: int,
         rngs: nnx.Rngs,
+        alpha: float = 0.2,
     ) -> None:
-        self.rnn = VanillaRNN(input_size, hidden_size, rngs)
+        self.rnn = VanillaRNN(input_size, hidden_size, rngs, alpha=alpha)
         self.readout = LinearReadout(hidden_size, output_size, rngs)
 
     def __call__(self, xs: jax.Array) -> jax.Array:
@@ -255,8 +275,9 @@ class LowRankRNNModel(nnx.Module):
         rank: int,
         output_size: int,
         rngs: nnx.Rngs,
+        alpha: float = 0.2,
     ) -> None:
-        self.rnn = LowRankRNN(input_size, hidden_size, rank, rngs)
+        self.rnn = LowRankRNN(input_size, hidden_size, rank, rngs, alpha=alpha)
         self.readout = LinearReadout(hidden_size, output_size, rngs)
 
     def __call__(self, xs: jax.Array) -> jax.Array:

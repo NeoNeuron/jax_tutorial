@@ -100,9 +100,9 @@ grad_kernel = grads.rnn.cell.linear.kernel[...]  # navigate like the model; use 
 
 ## Low-Rank RNN
 
-`W_rec = U @ V.T` where `U, V ∈ R^{N×r}`. Stored as `nnx.Param` on `LowRankRNNCell`.
+`J = M @ N.T` where `M, N ∈ R^{N×r}`, with `J_{ij} = Σ_r m_i^(r) n_j^(r)`. Stored as `nnx.Param` on `LowRankRNNCell`.
 The rank-r constraint holds by construction throughout training — no projection step needed.
-Access the reconstructed matrix with `model.rnn.cell.W_rec` (property).
+Access the reconstructed matrix with `model.rnn.cell.J_rec` (property).
 
 ## JAX Timing Gotcha
 

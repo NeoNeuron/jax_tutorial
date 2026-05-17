@@ -42,12 +42,18 @@ class TestVanillaRNNCell:
         h_new = cell(h, x)
         assert h_new.shape == (4, 16)
 
-    def test_tanh_range(self, rngs):
+    def test_leaky_integration(self, rngs):
+        """h_new is a convex combination: (1-α)h + α*pre, so it must lie between h and pre."""
         cell = VanillaRNNCell(input_size=3, hidden_size=16, rngs=rngs)
-        h = jax.random.normal(jax.random.PRNGKey(0), (32, 16))
+        h = jnp.zeros((32, 16))   # start from zero
         x = jax.random.normal(jax.random.PRNGKey(1), (32, 3))
         h_new = cell(h, x)
-        assert float(jnp.max(jnp.abs(h_new))) <= 1.0 + 1e-6, 'tanh output must be in [-1, 1]'
+        # From h=0: h_new = alpha * (tanh(0)@W.T + x@W_in.T + b) = alpha * (x@W_in.T + b)
+        assert jnp.all(jnp.isfinite(h_new)), 'output must be finite'
+        # alpha=0.2, so |h_new| = 0.2 * |pre| — magnitude is bounded by alpha
+        assert float(jnp.max(jnp.abs(h_new))) < float(jnp.max(jnp.abs(
+            x @ cell.W_in.T + cell.b
+        ))), 'leaky integration should dampen the signal'
 
     def test_deterministic(self, rngs):
         cell = VanillaRNNCell(input_size=2, hidden_size=8, rngs=rngs)
@@ -97,7 +103,7 @@ class TestVanillaRNN:
             return jnp.mean(model(xs) ** 2)
 
         _, grads = nnx.value_and_grad(loss)(model)
-        grad_w = grads.rnn.cell.linear.kernel[...]
+        grad_w = grads.rnn.cell.W
         assert not jnp.all(grad_w == 0), 'Gradients should not all be zero'
         assert jnp.all(jnp.isfinite(grad_w)), 'Gradients must be finite'
 
@@ -117,16 +123,16 @@ class TestLowRankRNNCell:
     def test_rank_constraint(self, rngs):
         N, r = 32, 4
         cell = LowRankRNNCell(1, N, r, rngs=rngs)
-        W_rec = np.array(cell.W_rec)
-        svs = np.linalg.svd(W_rec, compute_uv=False)
+        J_rec = np.array(cell.J_rec)
+        svs = np.linalg.svd(J_rec, compute_uv=False)
         numerical_rank = int(np.sum(svs > 1e-6))
         assert numerical_rank == r, f'Expected rank {r}, got {numerical_rank}'
 
     @pytest.mark.parametrize('rank', [1, 2, 4, 8])
     def test_various_ranks(self, rank, rngs):
         cell = LowRankRNNCell(2, 32, rank=rank, rngs=nnx.Rngs(rank))
-        W = np.array(cell.W_rec)
-        svs = np.linalg.svd(W, compute_uv=False)
+        J = np.array(cell.J_rec)
+        svs = np.linalg.svd(J, compute_uv=False)
         assert int(np.sum(svs > 1e-6)) == rank
 
     def test_gradients_flow(self, rngs):
@@ -137,10 +143,10 @@ class TestLowRankRNNCell:
             return jnp.mean(model(xs) ** 2)
 
         _, grads = nnx.value_and_grad(loss)(model)
-        grad_U = grads.rnn.cell.U[...]
-        grad_V = grads.rnn.cell.V[...]
-        assert jnp.all(jnp.isfinite(grad_U))
-        assert jnp.all(jnp.isfinite(grad_V))
+        grad_M = grads.rnn.cell.M
+        grad_N = grads.rnn.cell.N
+        assert jnp.all(jnp.isfinite(grad_M))
+        assert jnp.all(jnp.isfinite(grad_N))
 
 
 class TestLowRankRNN:

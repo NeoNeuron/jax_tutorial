@@ -35,13 +35,14 @@ def vanilla_models():
     I, H = 3, 16
     jax_model = VanillaRNNModel(I, H, output_size=1, rngs=nnx.Rngs(0))
 
-    kernel = np.array(jax_model.rnn.cell.linear.kernel[...])
-    bias   = np.array(jax_model.rnn.cell.linear.bias[...])
-    ro_W   = np.array(jax_model.readout.linear.kernel[...])
-    ro_b   = np.array(jax_model.readout.linear.bias[...])
+    W_np   = np.array(jax_model.rnn.cell.W)    # (H, H)
+    Win_np = np.array(jax_model.rnn.cell.W_in) # (H, I)
+    b_np   = np.array(jax_model.rnn.cell.b)    # (H,)
+    ro_W   = np.array(jax_model.readout.linear.kernel)
+    ro_b   = np.array(jax_model.readout.linear.bias)
 
     torch_model = TorchVanillaRNNModel(I, H, output_size=1)
-    load_vanilla_rnn_weights(torch_model.rnn, kernel, bias)
+    load_vanilla_rnn_weights(torch_model.rnn, W_np, Win_np, b_np)
     with torch.no_grad():
         torch_model.readout.weight.copy_(torch.tensor(ro_W.T))
         torch_model.readout.bias.copy_(torch.tensor(ro_b))
@@ -55,15 +56,15 @@ def lowrank_models():
     I, H, R = 3, 16, 4
     jax_model = LowRankRNNModel(I, H, rank=R, output_size=1, rngs=nnx.Rngs(0))
 
-    U_np  = np.array(jax_model.rnn.cell.U[...])
-    V_np  = np.array(jax_model.rnn.cell.V[...])
-    Win_k = np.array(jax_model.rnn.cell.W_in.kernel[...])
-    Win_b = np.array(jax_model.rnn.cell.W_in.bias[...])
-    ro_W  = np.array(jax_model.readout.linear.kernel[...])
-    ro_b  = np.array(jax_model.readout.linear.bias[...])
+    M_np   = np.array(jax_model.rnn.cell.M)
+    N_np   = np.array(jax_model.rnn.cell.N)
+    Win_np = np.array(jax_model.rnn.cell.W_in)  # (H, I)
+    b_np   = np.array(jax_model.rnn.cell.b)
+    ro_W   = np.array(jax_model.readout.linear.kernel)
+    ro_b   = np.array(jax_model.readout.linear.bias)
 
     torch_model = TorchLowRankRNNModel(I, H, rank=R, output_size=1)
-    load_lowrank_rnn_weights(torch_model.rnn, U_np, V_np, Win_k, Win_b)
+    load_lowrank_rnn_weights(torch_model.rnn, M_np, N_np, Win_np, b_np)
     with torch.no_grad():
         torch_model.readout.weight.copy_(torch.tensor(ro_W.T))
         torch_model.readout.bias.copy_(torch.tensor(ro_b))
@@ -111,40 +112,38 @@ class TestVanillaRNNConsistency:
         print(f'\n  Vanilla hidden states max diff: {diff:.2e}')
         assert diff < ATOL
 
-    def test_gradient_kernel(self, vanilla_models, inputs):
+    def test_gradient_W(self, vanilla_models, inputs):
         jax_m, torch_m, _, _ = vanilla_models
         xs_jax   = jnp.array(inputs)
         xs_torch = torch.tensor(inputs)
 
-        # JAX grad
         def jax_loss(m): return jnp.mean(m(xs_jax) ** 2)
         _, grads = nnx.value_and_grad(jax_loss)(jax_m)
-        jax_gk = np.array(grads.rnn.cell.linear.kernel[...])
+        jax_gW = np.array(grads.rnn.cell.W)
 
-        # PyTorch grad
         torch_m.zero_grad()
         torch_m(xs_torch).pow(2).mean().backward()
-        torch_gk = torch_m.rnn.cell.linear.weight.grad.numpy().T
+        torch_gW = torch_m.rnn.cell.W.grad.numpy()
 
-        diff = np.max(np.abs(jax_gk - torch_gk))
-        print(f'\n  Vanilla grad kernel max diff: {diff:.2e}')
+        diff = np.max(np.abs(jax_gW - torch_gW))
+        print(f'\n  Vanilla grad W max diff: {diff:.2e}')
         assert diff < ATOL
 
-    def test_gradient_bias(self, vanilla_models, inputs):
+    def test_gradient_b(self, vanilla_models, inputs):
         jax_m, torch_m, _, _ = vanilla_models
         xs_jax   = jnp.array(inputs)
         xs_torch = torch.tensor(inputs)
 
         def jax_loss(m): return jnp.mean(m(xs_jax) ** 2)
         _, grads = nnx.value_and_grad(jax_loss)(jax_m)
-        jax_gb = np.array(grads.rnn.cell.linear.bias[...])
+        jax_gb = np.array(grads.rnn.cell.b)
 
         torch_m.zero_grad()
         torch_m(xs_torch).pow(2).mean().backward()
-        torch_gb = torch_m.rnn.cell.linear.bias.grad.numpy()
+        torch_gb = torch_m.rnn.cell.b.grad.numpy()
 
         diff = np.max(np.abs(jax_gb - torch_gb))
-        print(f'\n  Vanilla grad bias max diff: {diff:.2e}')
+        print(f'\n  Vanilla grad b max diff: {diff:.2e}')
         assert diff < ATOL
 
 
@@ -167,7 +166,7 @@ class TestLowRankRNNConsistency:
         print(f'\n  LowRank forward max diff: {diff:.2e}')
         assert diff < ATOL
 
-    def test_gradient_U(self, lowrank_models, inputs):
+    def test_gradient_M(self, lowrank_models, inputs):
         jax_m, torch_m, I, H, R = lowrank_models
         xs_np = inputs[:, :, :I]
         xs_jax   = jnp.array(xs_np)
@@ -175,17 +174,17 @@ class TestLowRankRNNConsistency:
 
         def jax_loss(m): return jnp.mean(m(xs_jax) ** 2)
         _, grads = nnx.value_and_grad(jax_loss)(jax_m)
-        jax_gU = np.array(grads.rnn.cell.U[...])
+        jax_gM = np.array(grads.rnn.cell.M)
 
         torch_m.zero_grad()
         torch_m(xs_torch).pow(2).mean().backward()
-        torch_gU = torch_m.rnn.cell.U.grad.numpy()
+        torch_gM = torch_m.rnn.cell.M.grad.numpy()
 
-        diff = np.max(np.abs(jax_gU - torch_gU))
-        print(f'\n  LowRank grad U max diff: {diff:.2e}')
+        diff = np.max(np.abs(jax_gM - torch_gM))
+        print(f'\n  LowRank grad M max diff: {diff:.2e}')
         assert diff < ATOL
 
-    def test_gradient_V(self, lowrank_models, inputs):
+    def test_gradient_N(self, lowrank_models, inputs):
         jax_m, torch_m, I, H, R = lowrank_models
         xs_np = inputs[:, :, :I]
         xs_jax   = jnp.array(xs_np)
@@ -193,14 +192,14 @@ class TestLowRankRNNConsistency:
 
         def jax_loss(m): return jnp.mean(m(xs_jax) ** 2)
         _, grads = nnx.value_and_grad(jax_loss)(jax_m)
-        jax_gV = np.array(grads.rnn.cell.V[...])
+        jax_gN = np.array(grads.rnn.cell.N)
 
         torch_m.zero_grad()
         torch_m(xs_torch).pow(2).mean().backward()
-        torch_gV = torch_m.rnn.cell.V.grad.numpy()
+        torch_gN = torch_m.rnn.cell.N.grad.numpy()
 
-        diff = np.max(np.abs(jax_gV - torch_gV))
-        print(f'\n  LowRank grad V max diff: {diff:.2e}')
+        diff = np.max(np.abs(jax_gN - torch_gN))
+        print(f'\n  LowRank grad N max diff: {diff:.2e}')
         assert diff < ATOL
 
     def test_gradient_Win(self, lowrank_models, inputs):
@@ -211,11 +210,11 @@ class TestLowRankRNNConsistency:
 
         def jax_loss(m): return jnp.mean(m(xs_jax) ** 2)
         _, grads = nnx.value_and_grad(jax_loss)(jax_m)
-        jax_gWin = np.array(grads.rnn.cell.W_in.kernel[...])
+        jax_gWin = np.array(grads.rnn.cell.W_in)  # (H, I)
 
         torch_m.zero_grad()
         torch_m(xs_torch).pow(2).mean().backward()
-        torch_gWin = torch_m.rnn.cell.W_in.weight.grad.numpy().T
+        torch_gWin = torch_m.rnn.cell.W_in.grad.numpy()  # (H, I) — same shape
 
         diff = np.max(np.abs(jax_gWin - torch_gWin))
         print(f'\n  LowRank grad W_in max diff: {diff:.2e}')
