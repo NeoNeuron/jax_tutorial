@@ -1,12 +1,11 @@
 """
 Visualise benchmark results from benchmarks/results/ and save figures to benchmarks/figures/.
 
-Produces two figures:
-  figures/benchmark_sweeps.pdf   — three-panel sweep: JAX-CPU, PyTorch-CPU, PyTorch-MPS
-  figures/benchmark_speedup.pdf  — speedup ratios across all CPU configs (JAX vs PyTorch)
-
-NOTE: JAX Metal (jax-metal) is incompatible with JAX 0.10.x, so GPU data is
-PyTorch MPS only. The sweeps figure adds a third MPS line for direct comparison.
+Produces four figures:
+  benchmark_sweeps.pdf      — seq_len / hidden / rank sweeps, all device-framework combos
+  benchmark_speedup.pdf     — JAX vs PyTorch speedup on CPU and CUDA
+  benchmark_cpu_vs_mps.pdf  — PyTorch CPU vs MPS (Apple Silicon) comparison
+  benchmark_cuda.pdf        — JAX CUDA vs PyTorch CUDA: sweeps, speedup, peak memory
 """
 
 import json
@@ -22,10 +21,15 @@ RESULTS_DIR = Path(__file__).parent / 'results'
 FIGURES_DIR = Path(__file__).parent / 'figures'
 FIGURES_DIR.mkdir(exist_ok=True)
 
-JAX_CPU_COLOR   = '#2196F3'   # blue
-TORCH_CPU_COLOR = '#F44336'   # red
-TORCH_GPU_COLOR = '#FF9800'   # orange
-ALPHA_ERR = 0.15
+# Colour / style palette
+STYLE = {
+    ('jax',   'cpu'):  dict(color='#2196F3', ls='-',  marker='o', label='JAX CPU  (lax.scan)'),
+    ('jax',   'cuda'): dict(color='#0D47A1', ls='--', marker='s', label='JAX CUDA (lax.scan)'),
+    ('torch', 'cpu'):  dict(color='#F44336', ls='-',  marker='o', label='PyTorch CPU  (loop)'),
+    ('torch', 'gpu'):  dict(color='#FF9800', ls='--', marker='^', label='PyTorch MPS  (loop)'),
+    ('torch', 'cuda'): dict(color='#9C27B0', ls='--', marker='D', label='PyTorch CUDA (loop)'),
+}
+ALPHA_BAND = 0.12
 
 
 # ---------------------------------------------------------------------------
@@ -38,22 +42,23 @@ def load_results():
         data = json.loads(path.read_text())
         cfg = data['config']
         records.append({
-            'framework': data['framework'],
-            'model':     cfg['model'],
-            'hidden':    cfg['hidden'],
-            'seq_len':   cfg['seq_len'],
-            'batch':     cfg['batch'],
-            'rank':      cfg.get('rank'),
-            'device':    cfg.get('device', 'cpu'),   # old files have no 'device' key → cpu
-            'median_ms': data['median_ms'],
-            'min_ms':    data['min_ms'],
-            'max_ms':    data['max_ms'],
+            'framework':      data['framework'],
+            'model':          cfg['model'],
+            'hidden':         cfg['hidden'],
+            'seq_len':        cfg['seq_len'],
+            'batch':          cfg['batch'],
+            'rank':           cfg.get('rank'),
+            'device':         cfg.get('device', 'cpu'),
+            'median_ms':      data['median_ms'],
+            'min_ms':         data['min_ms'],
+            'max_ms':         data['max_ms'],
+            'peak_memory_mb': data.get('peak_memory_mb'),
         })
     return records
 
 
-def select(records, **filters):
-    return [r for r in records if all(r.get(k) == v for k, v in filters.items())]
+def select(records, **kw):
+    return [r for r in records if all(r.get(k) == v for k, v in kw.items())]
 
 
 def _arrays(recs, x_key):
@@ -61,192 +66,309 @@ def _arrays(recs, x_key):
     return (
         [r[x_key]        for r in recs],
         [r['median_ms']  for r in recs],
-        [r['median_ms'] - r['min_ms'] for r in recs],
-        [r['max_ms'] - r['median_ms'] for r in recs],
+        [r['median_ms'] - r['min_ms']  for r in recs],
+        [r['max_ms']    - r['median_ms'] for r in recs],
     )
 
 
-def _plot_line(ax, recs, x_key, color, label, linestyle='-'):
+def _plot_line(ax, recs, x_key, fw, device, ms=5):
     if not recs:
         return
+    sty = STYLE[(fw, device)]
     xs, med, lo, hi = _arrays(recs, x_key)
     ax.errorbar(xs, med, yerr=[lo, hi],
-                color=color, marker='o', ms=5, lw=2,
-                capsize=3, label=label, linestyle=linestyle)
+                color=sty['color'], ls=sty['ls'], marker=sty['marker'],
+                ms=ms, lw=2, capsize=3, label=sty['label'])
     ax.fill_between(xs,
                      [m - l for m, l in zip(med, lo)],
                      [m + h for m, h in zip(med, hi)],
-                     color=color, alpha=ALPHA_ERR)
+                     color=sty['color'], alpha=ALPHA_BAND)
 
 
-# ---------------------------------------------------------------------------
-# Figure 1 — three-panel sweep (CPU JAX, CPU Torch, GPU Torch)
-# ---------------------------------------------------------------------------
-
-def plot_sweeps(all_records):
-    fig, axes = plt.subplots(1, 3, figsize=(15, 4.5))
-    fig.suptitle('Training Step Time — JAX CPU vs PyTorch CPU vs PyTorch MPS (Apple M4 Pro, batch=64)',
-                 fontsize=12)
-
-    sweep_specs = [
-        dict(ax=axes[0], x_key='seq_len', x_label='Sequence length', x_vals=[50, 100, 200, 500],
-             title='A  Vanilla RNN — sequence length',
-             fixed=dict(model='vanilla', hidden=64, batch=64)),
-        dict(ax=axes[1], x_key='hidden',  x_label='Hidden size',     x_vals=[32, 64, 128, 256],
-             title='B  Vanilla RNN — hidden size',
-             fixed=dict(model='vanilla', seq_len=100, batch=64)),
-        dict(ax=axes[2], x_key='rank',    x_label='Rank r',          x_vals=[1, 2, 4, 8, 16],
-             title='C  Low-rank RNN — rank',
-             fixed=dict(model='lowrank', hidden=64, seq_len=100, batch=64)),
-    ]
-
-    for spec in sweep_specs:
-        ax    = spec['ax']
-        fixed = spec['fixed']
-        x_key = spec['x_key']
-
-        _plot_line(ax, select(all_records, framework='jax',   device='cpu', **fixed), x_key,
-                   JAX_CPU_COLOR,   'JAX (lax.scan + vmap, CPU)')
-        _plot_line(ax, select(all_records, framework='torch', device='cpu', **fixed), x_key,
-                   TORCH_CPU_COLOR, 'PyTorch (Python loop, CPU)')
-        _plot_line(ax, select(all_records, framework='torch', device='gpu', **fixed), x_key,
-                   TORCH_GPU_COLOR, 'PyTorch (Python loop, MPS)', linestyle='--')
-
-        ax.set_title(spec['title'], fontsize=10, fontweight='bold')
-        ax.set_xlabel(spec['x_label'])
-        ax.set_ylabel('Median step time (ms)')
-        ax.set_xticks(spec['x_vals'])
+def _fmt_panel(ax, title, x_label, x_vals, x_key=None):
+    ax.set_title(title, fontsize=10, fontweight='bold')
+    ax.set_xlabel(x_label, fontsize=9)
+    ax.set_ylabel('Median step time (ms)', fontsize=9)
+    if x_vals:
+        ax.set_xticks(x_vals)
         ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
-        ax.grid(True, alpha=0.3)
-        ax.legend(fontsize=7.5)
+    ax.grid(True, alpha=0.3)
+    ax.legend(fontsize=7, ncol=1)
 
-    plt.tight_layout()
+
+def _savefig(fig, stem):
     for ext in ('pdf', 'png'):
-        out = FIGURES_DIR / f'benchmark_sweeps.{ext}'
+        out = FIGURES_DIR / f'{stem}.{ext}'
         fig.savefig(out, dpi=150 if ext == 'png' else None, bbox_inches='tight')
         print(f'Saved {out}')
     plt.close(fig)
 
 
 # ---------------------------------------------------------------------------
-# Figure 2 — speedup bar chart (CPU: JAX vs PyTorch)
+# Figure 1 — full sweep (all device × framework combos)
+# ---------------------------------------------------------------------------
+
+def plot_sweeps(all_records):
+    fig, axes = plt.subplots(1, 3, figsize=(16, 4.8))
+    fig.suptitle(
+        'Training Step Time — JAX vs PyTorch across CPU / MPS / CUDA  (batch=64)',
+        fontsize=12)
+
+    sweep_specs = [
+        dict(ax=axes[0], x_key='seq_len', x_label='Sequence length',
+             x_vals=[50, 100, 200, 500],
+             title='A  Vanilla RNN — sequence length',
+             fixed=dict(model='vanilla', hidden=64, batch=64)),
+        dict(ax=axes[1], x_key='hidden', x_label='Hidden size',
+             x_vals=[32, 64, 128, 256],
+             title='B  Vanilla RNN — hidden size',
+             fixed=dict(model='vanilla', seq_len=100, batch=64)),
+        dict(ax=axes[2], x_key='rank', x_label='Rank r',
+             x_vals=[1, 2, 4, 8, 16],
+             title='C  Low-rank RNN — rank',
+             fixed=dict(model='lowrank', hidden=64, seq_len=100, batch=64)),
+    ]
+
+    combos = [('jax', 'cpu'), ('jax', 'cuda'),
+              ('torch', 'cpu'), ('torch', 'gpu'), ('torch', 'cuda')]
+
+    for spec in sweep_specs:
+        ax = spec['ax']
+        for fw, dev in combos:
+            recs = select(all_records, framework=fw, device=dev, **spec['fixed'])
+            _plot_line(ax, recs, spec['x_key'], fw, dev)
+        _fmt_panel(ax, spec['title'], spec['x_label'], spec['x_vals'])
+
+    plt.tight_layout()
+    _savefig(fig, 'benchmark_sweeps')
+
+
+# ---------------------------------------------------------------------------
+# Figure 2 — speedup bars: JAX vs PyTorch on CPU and CUDA
 # ---------------------------------------------------------------------------
 
 def plot_speedup(all_records):
     def cfg_key(r):
         return (r['model'], r['hidden'], r['seq_len'], r['batch'], r['rank'])
 
-    cpu = [r for r in all_records if r['device'] == 'cpu']
-    jax_map   = {cfg_key(r): r for r in cpu if r['framework'] == 'jax'}
-    torch_map = {cfg_key(r): r for r in cpu if r['framework'] == 'torch'}
-    shared    = sorted(set(jax_map) & set(torch_map))
+    def speedup_pairs(device):
+        jax_map   = {cfg_key(r): r for r in all_records
+                     if r['framework'] == 'jax'   and r['device'] == device}
+        torch_map = {cfg_key(r): r for r in all_records
+                     if r['framework'] == 'torch' and r['device'] == device}
+        shared = sorted(set(jax_map) & set(torch_map))
+        ratios = [torch_map[k]['median_ms'] / jax_map[k]['median_ms'] for k in shared]
+        labels = [_cfg_label(k) for k in shared]
+        return ratios, labels
 
-    speedups = [torch_map[k]['median_ms'] / jax_map[k]['median_ms'] for k in shared]
-    labels   = [_cfg_label(k) for k in shared]
+    cpu_ratios,  cpu_labels  = speedup_pairs('cpu')
+    cuda_ratios, cuda_labels = speedup_pairs('cuda')
 
-    order    = np.argsort(speedups)[::-1]
-    speedups = [speedups[i] for i in order]
-    labels   = [labels[i]   for i in order]
-    colors   = ['#2196F3' if 'lowrank' in labels[i] else '#4CAF50' for i in range(len(labels))]
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5.5))
+    fig.suptitle('JAX Speedup over PyTorch  (PyTorch ms / JAX ms, same device)',
+                 fontsize=12, fontweight='bold')
 
-    fig, ax = plt.subplots(figsize=(11, 4.8))
-    bars = ax.barh(range(len(labels)), speedups, color=colors, edgecolor='white', height=0.65)
-    ax.axvline(1.0, color='grey', lw=1, ls='--')
-    ax.set_yticks(range(len(labels)))
-    ax.set_yticklabels(labels, fontsize=8.5)
-    ax.set_xlabel('JAX speedup over PyTorch CPU  (PyTorch ms / JAX ms)', fontsize=10)
-    ax.set_title('JAX CPU vs PyTorch CPU — Speedup (higher = JAX faster)', fontsize=12, fontweight='bold')
-    ax.grid(True, axis='x', alpha=0.3)
-
-    for bar, val in zip(bars, speedups):
-        ax.text(bar.get_width() + 0.3, bar.get_y() + bar.get_height() / 2,
-                f'{val:.1f}×', va='center', fontsize=8.5)
-
-    from matplotlib.patches import Patch
-    ax.legend(handles=[
-        Patch(color='#2196F3', label='Low-rank RNN'),
-        Patch(color='#4CAF50', label='Vanilla RNN'),
-    ], fontsize=9, loc='lower right')
-    ax.set_xlim(0, max(speedups) * 1.15)
+    for ax, ratios, labels, device, color in [
+        (axes[0], cpu_ratios,  cpu_labels,  'CPU',  '#2196F3'),
+        (axes[1], cuda_ratios, cuda_labels, 'CUDA', '#0D47A1'),
+    ]:
+        if not ratios:
+            ax.set_visible(False)
+            continue
+        order   = np.argsort(ratios)[::-1]
+        ratios  = [ratios[i]  for i in order]
+        labels  = [labels[i]  for i in order]
+        bar_colors = ['#2196F3' if 'lowrank' in labels[i] else '#4CAF50'
+                      for i in range(len(labels))]
+        bars = ax.barh(range(len(labels)), ratios,
+                       color=bar_colors, edgecolor='white', height=0.65)
+        ax.axvline(1.0, color='grey', lw=1, ls='--')
+        ax.set_yticks(range(len(labels)))
+        ax.set_yticklabels(labels, fontsize=8)
+        ax.set_xlabel(f'JAX {device} / PyTorch {device} speedup  (higher = JAX faster)',
+                      fontsize=9)
+        ax.set_title(f'{device}  —  JAX lax.scan vs PyTorch loop', fontsize=10, fontweight='bold')
+        ax.grid(True, axis='x', alpha=0.3)
+        ax.set_xlim(0, max(ratios) * 1.15)
+        for bar, val in zip(bars, ratios):
+            ax.text(bar.get_width() + max(ratios) * 0.01,
+                    bar.get_y() + bar.get_height() / 2,
+                    f'{val:.1f}×', va='center', fontsize=8)
+        from matplotlib.patches import Patch
+        ax.legend(handles=[
+            Patch(color='#2196F3', label='Low-rank RNN'),
+            Patch(color='#4CAF50', label='Vanilla RNN'),
+        ], fontsize=8, loc='lower right')
 
     plt.tight_layout()
-    for ext in ('pdf', 'png'):
-        out = FIGURES_DIR / f'benchmark_speedup.{ext}'
-        fig.savefig(out, dpi=150 if ext == 'png' else None, bbox_inches='tight')
-        print(f'Saved {out}')
-    plt.close(fig)
+    _savefig(fig, 'benchmark_speedup')
 
 
 # ---------------------------------------------------------------------------
-# Figure 3 — CPU vs MPS comparison for PyTorch
+# Figure 3 — PyTorch CPU vs MPS
 # ---------------------------------------------------------------------------
 
 def plot_cpu_vs_mps(all_records):
-    """Bar chart: PyTorch CPU median vs MPS median for every config."""
     def cfg_key(r):
         return (r['model'], r['hidden'], r['seq_len'], r['batch'], r['rank'])
 
-    torch_cpu = {cfg_key(r): r for r in all_records if r['framework'] == 'torch' and r['device'] == 'cpu'}
-    torch_gpu = {cfg_key(r): r for r in all_records if r['framework'] == 'torch' and r['device'] == 'gpu'}
-    shared    = sorted(set(torch_cpu) & set(torch_gpu))
+    cpu_map = {cfg_key(r): r for r in all_records
+               if r['framework'] == 'torch' and r['device'] == 'cpu'}
+    mps_map = {cfg_key(r): r for r in all_records
+               if r['framework'] == 'torch' and r['device'] == 'gpu'}
+    shared  = sorted(set(cpu_map) & set(mps_map))
+    if not shared:
+        print('No CPU+MPS pairs found — skipping benchmark_cpu_vs_mps')
+        return
 
-    ratios  = [torch_cpu[k]['median_ms'] / torch_gpu[k]['median_ms'] for k in shared]
-    labels  = [_cfg_label(k) for k in shared]
-    cpu_ms  = [torch_cpu[k]['median_ms'] for k in shared]
-    mps_ms  = [torch_gpu[k]['median_ms'] for k in shared]
+    cpu_ms = [cpu_map[k]['median_ms'] for k in shared]
+    mps_ms = [mps_map[k]['median_ms'] for k in shared]
+    ratios = [c / m for c, m in zip(cpu_ms, mps_ms)]
+    labels = [_cfg_label(k) for k in shared]
 
-    # sort by CPU time descending for readability
     order  = np.argsort(cpu_ms)[::-1]
     labels = [labels[i] for i in order]
     ratios = [ratios[i] for i in order]
     cpu_ms = [cpu_ms[i] for i in order]
     mps_ms = [mps_ms[i] for i in order]
 
-    y = np.arange(len(labels))
-    bar_h = 0.35
-
+    y, bh = np.arange(len(labels)), 0.35
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
     fig.suptitle('PyTorch CPU vs MPS (Apple M4 Pro Metal GPU)', fontsize=12, fontweight='bold')
 
-    # Left panel: absolute times
     ax = axes[0]
-    ax.barh(y + bar_h/2, cpu_ms, height=bar_h, color=TORCH_CPU_COLOR, label='CPU')
-    ax.barh(y - bar_h/2, mps_ms, height=bar_h, color=TORCH_GPU_COLOR, label='MPS')
-    ax.set_yticks(y)
-    ax.set_yticklabels(labels, fontsize=8.5)
-    ax.set_xlabel('Median step time (ms)')
-    ax.set_title('Absolute times', fontsize=10)
-    ax.legend(fontsize=9)
-    ax.grid(True, axis='x', alpha=0.3)
+    ax.barh(y + bh/2, cpu_ms, height=bh, color='#F44336', label='CPU')
+    ax.barh(y - bh/2, mps_ms, height=bh, color='#FF9800', label='MPS')
+    ax.set_yticks(y); ax.set_yticklabels(labels, fontsize=8.5)
+    ax.set_xlabel('Median step time (ms)'); ax.set_title('Absolute times', fontsize=10)
+    ax.legend(fontsize=9); ax.grid(True, axis='x', alpha=0.3)
 
-    # Right panel: CPU/MPS ratio (>1 = MPS faster)
     ax2 = axes[1]
-    colors2 = [TORCH_CPU_COLOR if r < 1 else TORCH_GPU_COLOR for r in ratios]
+    colors2 = ['#FF9800' if r > 1 else '#F44336' for r in ratios]
     bars2 = ax2.barh(y, ratios, color=colors2, edgecolor='white', height=0.65)
     ax2.axvline(1.0, color='grey', lw=1, ls='--')
-    ax2.set_yticks(y)
-    ax2.set_yticklabels(labels, fontsize=8.5)
-    ax2.set_xlabel('CPU time / MPS time  (> 1 means MPS is faster)', fontsize=10)
+    ax2.set_yticks(y); ax2.set_yticklabels(labels, fontsize=8.5)
+    ax2.set_xlabel('CPU / MPS  (> 1 means MPS is faster)', fontsize=10)
     ax2.set_title('CPU / MPS speedup ratio', fontsize=10)
     ax2.grid(True, axis='x', alpha=0.3)
     for bar, val in zip(bars2, ratios):
-        ax2.text(bar.get_width() + 0.02, bar.get_y() + bar.get_height() / 2,
+        ax2.text(bar.get_width() + 0.02, bar.get_y() + bar.get_height()/2,
                  f'{val:.2f}×', va='center', fontsize=8)
 
     plt.tight_layout()
-    for ext in ('pdf', 'png'):
-        out = FIGURES_DIR / f'benchmark_cpu_vs_mps.{ext}'
-        fig.savefig(out, dpi=150 if ext == 'png' else None, bbox_inches='tight')
-        print(f'Saved {out}')
-    plt.close(fig)
+    _savefig(fig, 'benchmark_cpu_vs_mps')
 
+
+# ---------------------------------------------------------------------------
+# Figure 4 — CUDA deep-dive: sweeps + speedup + peak memory
+# ---------------------------------------------------------------------------
+
+def plot_cuda(all_records):
+    cuda = [r for r in all_records if r['device'] == 'cuda']
+    if not cuda:
+        print('No CUDA records found — skipping benchmark_cuda')
+        return
+
+    fig = plt.figure(figsize=(18, 9))
+    fig.suptitle('CUDA Benchmark — JAX (lax.scan) vs PyTorch (Python loop)  (batch=64)',
+                 fontsize=13, fontweight='bold')
+    gs = fig.add_gridspec(2, 4, hspace=0.42, wspace=0.38)
+
+    # ── Top row: three sweep panels ──────────────────────────────────────
+    sweep_specs = [
+        dict(ax=fig.add_subplot(gs[0, 0]),
+             x_key='seq_len', x_label='Sequence length', x_vals=[50, 100, 200, 500],
+             title='A  Vanilla RNN — seq_len',
+             fixed=dict(model='vanilla', hidden=64, batch=64)),
+        dict(ax=fig.add_subplot(gs[0, 1]),
+             x_key='hidden', x_label='Hidden size', x_vals=[32, 64, 128, 256],
+             title='B  Vanilla RNN — hidden',
+             fixed=dict(model='vanilla', seq_len=100, batch=64)),
+        dict(ax=fig.add_subplot(gs[0, 2:]),
+             x_key='rank', x_label='Rank r', x_vals=[1, 2, 4, 8, 16],
+             title='C  Low-rank RNN — rank',
+             fixed=dict(model='lowrank', hidden=64, seq_len=100, batch=64)),
+    ]
+
+    for spec in sweep_specs:
+        ax = spec['ax']
+        for fw, dev in [('jax', 'cuda'), ('torch', 'cuda')]:
+            recs = select(cuda, framework=fw, device=dev, **spec['fixed'])
+            _plot_line(ax, recs, spec['x_key'], fw, dev)
+        _fmt_panel(ax, spec['title'], spec['x_label'], spec['x_vals'])
+
+    # ── Bottom-left: speedup bars (JAX CUDA / PyTorch CUDA) ──────────────
+    def cfg_key(r):
+        return (r['model'], r['hidden'], r['seq_len'], r['batch'], r['rank'])
+
+    jax_map   = {cfg_key(r): r for r in cuda if r['framework'] == 'jax'}
+    torch_map = {cfg_key(r): r for r in cuda if r['framework'] == 'torch'}
+    shared    = sorted(set(jax_map) & set(torch_map))
+
+    speedups = [torch_map[k]['median_ms'] / jax_map[k]['median_ms'] for k in shared]
+    s_labels = [_cfg_label(k) for k in shared]
+    order    = np.argsort(speedups)[::-1]
+    speedups = [speedups[i] for i in order]
+    s_labels = [s_labels[i] for i in order]
+    s_colors = ['#0D47A1' if 'lowrank' in s_labels[i] else '#1B5E20'
+                for i in range(len(s_labels))]
+
+    ax_spd = fig.add_subplot(gs[1, :2])
+    bars = ax_spd.barh(range(len(s_labels)), speedups,
+                       color=s_colors, edgecolor='white', height=0.65)
+    ax_spd.axvline(1.0, color='grey', lw=1, ls='--')
+    ax_spd.set_yticks(range(len(s_labels)))
+    ax_spd.set_yticklabels(s_labels, fontsize=8)
+    ax_spd.set_xlabel('JAX CUDA / PyTorch CUDA speedup  (higher = JAX faster)', fontsize=9)
+    ax_spd.set_title('D  Speedup: JAX CUDA vs PyTorch CUDA', fontsize=10, fontweight='bold')
+    ax_spd.grid(True, axis='x', alpha=0.3)
+    ax_spd.set_xlim(0, max(speedups) * 1.14)
+    for bar, val in zip(bars, speedups):
+        ax_spd.text(bar.get_width() + max(speedups) * 0.01,
+                    bar.get_y() + bar.get_height()/2,
+                    f'{val:.1f}×', va='center', fontsize=8)
+    from matplotlib.patches import Patch
+    ax_spd.legend(handles=[
+        Patch(color='#0D47A1', label='Low-rank RNN'),
+        Patch(color='#1B5E20', label='Vanilla RNN'),
+    ], fontsize=8, loc='lower right')
+
+    # ── Bottom-right: peak memory grouped bars ────────────────────────────
+    mem_pairs = [(k, jax_map[k], torch_map[k]) for k in shared
+                 if jax_map[k].get('peak_memory_mb') is not None
+                 and torch_map[k].get('peak_memory_mb') is not None]
+    # sort by JAX peak memory descending
+    mem_pairs.sort(key=lambda t: t[1]['peak_memory_mb'], reverse=True)
+
+    m_labels  = [_cfg_label(k)         for k, _, _ in mem_pairs]
+    jax_mem   = [j['peak_memory_mb']   for _, j, _ in mem_pairs]
+    torch_mem = [t['peak_memory_mb']   for _, _, t in mem_pairs]
+
+    y_m = np.arange(len(m_labels))
+    bh  = 0.35
+    ax_mem = fig.add_subplot(gs[1, 2:])
+    ax_mem.barh(y_m + bh/2, jax_mem,   height=bh, color='#0D47A1', label='JAX CUDA')
+    ax_mem.barh(y_m - bh/2, torch_mem, height=bh, color='#9C27B0', label='PyTorch CUDA')
+    ax_mem.set_yticks(y_m)
+    ax_mem.set_yticklabels(m_labels, fontsize=8)
+    ax_mem.set_xlabel('Peak GPU memory (MB)', fontsize=9)
+    ax_mem.set_title('E  Peak GPU memory', fontsize=10, fontweight='bold')
+    ax_mem.legend(fontsize=8)
+    ax_mem.grid(True, axis='x', alpha=0.3)
+
+    _savefig(fig, 'benchmark_cuda')
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 def _cfg_label(k):
     model, hidden, seq_len, batch, rank = k
-    base = f'{model}  h={hidden}  T={seq_len}'
+    s = f'{model}  h={hidden}  T={seq_len}'
     if rank is not None:
-        base += f'  r={rank}'
-    return base
+        s += f'  r={rank}'
+    return s
 
 
 # ---------------------------------------------------------------------------
@@ -255,10 +377,14 @@ def _cfg_label(k):
 
 if __name__ == '__main__':
     records = load_results()
-    print(f'Loaded {len(records)} benchmark records')
-    by_device = {d: sum(1 for r in records if r['device'] == d) for d in ('cpu', 'gpu')}
-    print(f'  CPU records: {by_device["cpu"]}  GPU records: {by_device["gpu"]}')
+    by_dev = {}
+    for r in records:
+        by_dev[r['device']] = by_dev.get(r['device'], 0) + 1
+    print(f'Loaded {len(records)} records: ' +
+          '  '.join(f'{d}={n}' for d, n in sorted(by_dev.items())))
+
     plot_sweeps(records)
     plot_speedup(records)
     plot_cpu_vs_mps(records)
+    plot_cuda(records)
     print('Done.')
