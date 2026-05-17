@@ -1,0 +1,27 @@
+# Core JAX
+jax>=0.4.30
+jaxlib>=0.4.30
+
+# Flax NNX (requires >= 0.8.0 for stable nnx API)
+flax>=0.9.0
+
+# Optimizers
+optax>=0.2.3
+
+# Checkpointing
+orbax-checkpoint>=0.6.0
+
+# PyTorch (CPU; for GPU swap cpu→cu121 or similar)
+torch>=2.3.0
+torchvision>=0.18.0
+
+# Scientific Python
+numpy>=1.26.0
+scipy>=1.13.0
+matplotlib>=3.9.0
+
+# Notebooks & testing
+jupyter>=1.0.0
+ipykernel>=6.29.0
+pytest>=8.2.0
+tqdm>=4.66.0

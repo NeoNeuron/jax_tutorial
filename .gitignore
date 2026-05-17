@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+benchmarks/results/
+checkpoints/
+notebooks/*_executed.ipynb
+.DS_Store
