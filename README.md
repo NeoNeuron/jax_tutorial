@@ -19,6 +19,8 @@ A hands-on tutorial for ML practitioners who know PyTorch and want to learn JAX 
 
 Coming from PyTorch? The block-by-block comparison guide walks through module definition, `lax.scan` vs Python loops, training steps, and more — using a Vanilla RNN as the running example.
 
+[![Migration Guide Preview](docs/preview.png)](https://htmlpreview.github.io/?https://github.com/NeoNeuron/jax_tutorial/blob/main/docs/pytorch_to_jax.html)
+
 - [View in browser (rendered)](https://htmlpreview.github.io/?https://github.com/NeoNeuron/jax_tutorial/blob/main/docs/pytorch_to_jax.html)
 - [View as Markdown](docs/pytorch_to_jax.md)
 
