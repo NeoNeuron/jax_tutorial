@@ -4,16 +4,16 @@ A hands-on tutorial for ML practitioners who know PyTorch and want to learn JAX 
 
 ## What You'll Learn
 
-| Notebook | Topic |
-|---|---|
-| `01_jax_basics` | `jnp`, `jit`, `grad`, tracing model |
-| `02_vmap_and_scan` | Batching with `vmap`, efficient loops with `lax.scan` |
-| `03_ode_solving` | Euler/RK4 solvers, vmap over initial conditions |
-| `04_vanilla_rnn` | Vanilla RNN cell in Flax NNX, trained with Optax |
-| `05_lowrank_rnn` | Low-rank RNN (`W = MN^T`, rank-r constraint by construction) |
-| `06_training_pipeline` | Train loop, checkpointing with Orbax |
-| `07_pytorch_comparison` | Load identical weights → assert `max|JAX − PyTorch| < 1e-5` |
-| `08_benchmarks` | Timing sweeps, plots from `benchmarks/run_benchmarks.py` |
+| Notebook | Topic | Colab |
+|---|---|---|
+| `01_jax_basics` | `jnp`, `jit`, `grad`, tracing model | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NeoNeuron/jax_tutorial/blob/main/notebooks/01_jax_basics.ipynb) |
+| `02_vmap_and_scan` | Batching with `vmap`, efficient loops with `lax.scan` | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NeoNeuron/jax_tutorial/blob/main/notebooks/02_vmap_and_scan.ipynb) |
+| `03_ode_solving` | Euler/RK4 solvers, vmap over initial conditions | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NeoNeuron/jax_tutorial/blob/main/notebooks/03_ode_solving.ipynb) |
+| `04_vanilla_rnn` | Vanilla RNN cell in Flax NNX, trained with Optax | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NeoNeuron/jax_tutorial/blob/main/notebooks/04_vanilla_rnn.ipynb) |
+| `05_lowrank_rnn` | Low-rank RNN (`W = MN^T`, rank-r constraint by construction) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NeoNeuron/jax_tutorial/blob/main/notebooks/05_lowrank_rnn.ipynb) |
+| `06_training_pipeline` | Train loop, checkpointing with Orbax | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NeoNeuron/jax_tutorial/blob/main/notebooks/06_training_pipeline.ipynb) |
+| `07_pytorch_comparison` | Load identical weights → assert `max|JAX − PyTorch| < 1e-5` | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NeoNeuron/jax_tutorial/blob/main/notebooks/07_pytorch_comparison.ipynb) |
+| `08_benchmarks` | Timing sweeps, plots from `benchmarks/run_benchmarks.py` | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NeoNeuron/jax_tutorial/blob/main/notebooks/08_benchmarks.ipynb) |
 
 ## Quick Start
 
