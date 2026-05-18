@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PyTorch → JAX/Flax Migration Guide</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+<script>hljs.highlightAll();</script>
+<style>
+  /* ── Reset & base ─────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    color: #1a1a2e;
+    background: #f7f8fc;
+  }
+
+  /* ── Layout ───────────────────────────────────────────────────── */
+  .page-wrap {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 48px 24px 80px;
+  }
+
+  /* ── Header ───────────────────────────────────────────────────── */
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+  header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 8px;
+  }
+  header p {
+    color: #555;
+    font-size: 1rem;
+  }
+
+  /* ── Section ──────────────────────────────────────────────────── */
+  .section {
+    margin-bottom: 56px;
+  }
+  .section-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title .block-num {
+    background: #1a1a2e;
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+  }
+  .section-desc {
+    color: #444;
+    margin-bottom: 20px;
+    max-width: 820px;
+  }
+  .section-desc code {
+    background: #eef;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 0.88em;
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    color: #3730a3;
+  }
+  .callout {
+    background: #fffbeb;
+    border-left: 4px solid #f59e0b;
+    border-radius: 0 6px 6px 0;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    color: #78350f;
+    font-size: 0.9rem;
+    max-width: 820px;
+  }
+  .callout strong { color: #92400e; }
+
+  /* ── Side-by-side code panels ─────────────────────────────────── */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  @media (max-width: 760px) {
+    .compare { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.10);
+  }
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .panel-header .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* PyTorch = orange */
+  .panel.torch .panel-header {
+    background: #fff4ed;
+    color: #9a3412;
+    border-bottom: 2px solid #fb923c;
+  }
+  .panel.torch .panel-header .dot { background: #f97316; }
+
+  /* JAX = indigo */
+  .panel.jax .panel-header {
+    background: #eef2ff;
+    color: #3730a3;
+    border-bottom: 2px solid #6366f1;
+  }
+  .panel.jax .panel-header .dot { background: #6366f1; }
+
+  .panel pre {
+    margin: 0 !important;
+    border-radius: 0 !important;
+    font-size: 0.82rem !important;
+    line-height: 1.55 !important;
+    padding: 0 !important;
+    overflow-x: auto;
+  }
+  .panel pre code.hljs {
+    padding: 16px !important;
+    border-radius: 0 !important;
+  }
+
+  /* ── Diff highlights ──────────────────────────────────────────── */
+  mark.add  { background: rgba(134,239,172,0.25); border-radius: 2px; }
+  mark.del  { background: rgba(252,165,165,0.25); border-radius: 2px; }
+
+  /* ── Mental model table ───────────────────────────────────────── */
+  .concept-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+  @media (max-width: 600px) { .concept-grid { grid-template-columns: 1fr; } }
+
+  .concept-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 16px 18px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  }
+  .concept-card .concept-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .concept-card.torch .concept-label { color: #ea580c; }
+  .concept-card.jax   .concept-label { color: #4f46e5; }
+  .concept-card .concept-value {
+    font-size: 0.92rem;
+    color: #1a1a2e;
+  }
+  .concept-card .concept-value code {
+    background: #f1f5f9;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-size: 0.85em;
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+  }
+
+  /* ── Quick reference table ────────────────────────────────────── */
+  .ref-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.09);
+    font-size: 0.88rem;
+  }
+  .ref-table th {
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 700;
+    font-size: 0.78rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .ref-table th:nth-child(1) { background: #f1f5f9; color: #475569; }
+  .ref-table th:nth-child(2) { background: #fff4ed; color: #9a3412; }
+  .ref-table th:nth-child(3) { background: #eef2ff; color: #3730a3; }
+  .ref-table td {
+    padding: 9px 14px;
+    border-top: 1px solid #f1f5f9;
+    vertical-align: top;
+  }
+  .ref-table td code {
+    font-family: "JetBrains Mono", "Fira Code", monospace;
+    font-size: 0.82em;
+    background: #f8fafc;
+    border-radius: 3px;
+    padding: 1px 5px;
+  }
+  .ref-table tr:nth-child(even) td { background: #fafbfc; }
+  .ref-table td:nth-child(2) code { color: #c2410c; }
+  .ref-table td:nth-child(3) code { color: #4338ca; }
+
+  /* ── TOC pill nav ─────────────────────────────────────────────── */
+  .toc {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 48px;
+  }
+  .toc a {
+    text-decoration: none;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 0.82rem;
+    color: #334155;
+    transition: all 0.15s;
+  }
+  .toc a:hover { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+
+  hr.divider {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 48px 0;
+  }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- ── Header ─────────────────────────────────────────────────── -->
+  <header>
+    <h1>PyTorch → JAX / Flax NNX</h1>
+    <p>Block-by-block migration guide · Illustrated with a Vanilla RNN training example</p>
+  </header>
+
+  <!-- ── TOC ────────────────────────────────────────────────────── -->
+  <nav class="toc">
+    <a href="#mental-model">Mental Model</a>
+    <a href="#block1">Module Definition</a>
+    <a href="#block2">Sequential Loop vs scan</a>
+    <a href="#block3">Instantiation &amp; PRNG</a>
+    <a href="#block4">Training Step</a>
+    <a href="#block5">JIT Compilation</a>
+    <a href="#block6">Gradient Clipping</a>
+    <a href="#full-loop">Full Training Loop</a>
+    <a href="#ref">Quick Reference</a>
+  </nav>
+
+  <!-- ── Mental Model ───────────────────────────────────────────── -->
+  <div class="section" id="mental-model">
+    <div class="section-title">Mental Model Shift</div>
+    <p class="section-desc">Three conceptual differences matter before any code comparison.</p>
+    <div class="concept-grid">
+      <div class="concept-card torch">
+        <div class="concept-label">PyTorch</div>
+        <div class="concept-value">Eager execution · Mutable tensors · <code>autograd</code> on tensors · Global seed via <code>torch.manual_seed</code> · Python <code>for</code> loop unrolls steps</div>
+      </div>
+      <div class="concept-card jax">
+        <div class="concept-label">JAX / Flax NNX</div>
+        <div class="concept-value">Traced/compiled · Immutable arrays · Functional transforms (<code>jax.grad</code>) · Explicit PRNG keys · <code>lax.scan</code> compiles the loop</div>
+      </div>
+      <div class="concept-card torch">
+        <div class="concept-label">PyTorch — gradient flow</div>
+        <div class="concept-value"><code>loss.backward()</code> accumulates into <code>.grad</code>; must call <code>zero_grad()</code> before each step</div>
+      </div>
+      <div class="concept-card jax">
+        <div class="concept-label">JAX — gradient flow</div>
+        <div class="concept-value"><code>nnx.value_and_grad(fn)(model, batch)</code> returns a fresh gradient pytree; no accumulation, no <code>zero_grad</code></div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ── Block 1: Module Definition ────────────────────────────── -->
+  <div class="section" id="block1">
+    <div class="section-title"><span class="block-num">Block 1</span> Module &amp; Parameter Definition</div>
+    <p class="section-desc">
+      Both frameworks use a class-based module. The differences: no <code>super().__init__()</code>
+      in NNX, parameters use <code>nnx.Param(array)</code> instead of <code>nn.Parameter(tensor)</code>,
+      and random initialisation requires an explicit <code>rngs</code> handle instead of a global seed.
+    </p>
+    <div class="compare">
+      <div class="panel torch">
+        <div class="panel-header"><span class="dot"></span>PyTorch</div>
+        <pre><code class="language-python">import torch
+import torch.nn as nn
+
+class VanillaRNNCell(nn.Module):
+    def __init__(
+        self, input_size, hidden_size, alpha=0.2
+    ):
+        super().__init__()        # required
+        self.hidden_size = hidden_size
+        self.alpha = alpha
+        std = 1.0 / (hidden_size ** 0.5)
+
+        self.W    = nn.Parameter(
+            torch.randn(hidden_size, hidden_size) * std
+        )
+        self.W_in = nn.Parameter(
+            torch.randn(hidden_size, input_size) * std
+        )
+        self.b    = nn.Parameter(
+            torch.zeros(hidden_size)
+        )
+
+    def forward(self, h, x):
+        pre = (
+            torch.tanh(h) @ self.W.T
+            + x @ self.W_in.T
+            + self.b
+        )
+        return (1.0 - self.alpha) * h + self.alpha * pre</code></pre>
+      </div>
+      <div class="panel jax">
+        <div class="panel-header"><span class="dot"></span>JAX / Flax NNX</div>
+        <pre><code class="language-python">import jax.numpy as jnp
+import flax.nnx as nnx
+
+class VanillaRNNCell(nnx.Module):
+    def __init__(
+        self, input_size, hidden_size,
+        rngs: nnx.Rngs,             # explicit PRNG handle
+        alpha=0.2
+    ):
+        # no super().__init__() needed
+        self.hidden_size = hidden_size
+        self.alpha = alpha
+        init = nnx.initializers.normal(
+            stddev=1.0 / (hidden_size ** 0.5)
+        )
+        self.W    = nnx.Param(
+            init(rngs.params(), (hidden_size, hidden_size))
+        )
+        self.W_in = nnx.Param(
+            init(rngs.params(), (hidden_size, input_size))
+        )
+        self.b    = nnx.Param(jnp.zeros((hidden_size,)))
+
+    def __call__(self, h, x):       # forward → __call__
+        pre = (
+            jnp.tanh(h) @ self.W.T
+            + x @ self.W_in.T
+            + self.b
+        )
+        return (1.0 - self.alpha) * h + self.alpha * pre</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ── Block 2: scan vs loop ──────────────────────────────────── -->
+  <div class="section" id="block2">
+    <div class="section-title"><span class="block-num">Block 2</span> Sequential Computation — Python Loop vs <code>lax.scan</code></div>
+    <p class="section-desc">
+      This is the most consequential difference. PyTorch dispatches T GPU kernels (one per step).
+      JAX's <code>lax.scan</code> compiles the entire loop into a single XLA operation — no per-step launch overhead.
+      <code>vmap</code> then parallelises over the batch dimension.
+    </p>
+    <div class="callout">
+      <strong>Why <code>nnx.split</code> / <code>nnx.merge</code>?</strong><br>
+      <code>lax.scan</code> requires a <em>pure function</em> with no mutable state.
+      <code>nnx.split</code> extracts the parameter pytree as an immutable snapshot captured in the closure.
+      <code>nnx.merge</code> reconstructs a temporary module inside the scan body without re-allocating memory.
+    </div>
+    <div class="compare">
+      <div class="panel torch">
+        <div class="panel-header"><span class="dot"></span>PyTorch — Python for-loop</div>
+        <pre><code class="language-python">class VanillaRNN(nn.Module):
+    def __init__(self, input_size, hidden_size, alpha=0.2):
+        super().__init__()
+        self.cell = VanillaRNNCell(input_size, hidden_size, alpha)
+        self.hidden_size = hidden_size
+
+    def forward(self, xs, h0=None):
+        B, T, _ = xs.shape
+        h = (
+            torch.zeros(B, self.hidden_size, device=xs.device)
+            if h0 is None else h0
+        )
+        outputs = []
+        for t in range(T):          # T kernel dispatches
+            h = self.cell(h, xs[:, t])
+            outputs.append(h)
+        # stack list → tensor
+        return torch.stack(outputs, dim=1), h</code></pre>
+      </div>
+      <div class="panel jax">
+        <div class="panel-header"><span class="dot"></span>JAX — vmap + lax.scan</div>
+        <pre><code class="language-python">class VanillaRNN(nnx.Module):
+    def __init__(self, input_size, hidden_size, rngs, alpha=0.2):
+        self.cell = VanillaRNNCell(input_size, hidden_size, rngs, alpha)
+        self.hidden_size = hidden_size
+
+    def __call__(self, xs, h0=None):
+        B, T, _ = xs.shape
+        if h0 is None:
+            h0 = jnp.zeros((B, self.hidden_size))
+
+        # extract params once; constant across vmap + scan
+        graphdef, state = nnx.split(self.cell)
+
+        def run_single(x_seq, h_init):
+            # processes ONE sequence: x_seq (T, I), h_init (H,)
+            def step(h, x):
+                cell = nnx.merge(graphdef, state)
+                return cell(h, x), cell(h, x)   # carry, output
+            h_final, outputs = jax.lax.scan(
+                step, h_init, x_seq             # 1 kernel dispatch
+            )
+            return outputs, h_final
+
+        # vmap maps run_single over the batch axis
+        return jax.vmap(run_single)(xs, h0)     # (B,T,H), (B,H)</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ── Block 3: Instantiation ─────────────────────────────────── -->
+  <div class="section" id="block3">
+    <div class="section-title"><span class="block-num">Block 3</span> Model Instantiation &amp; PRNG</div>
+    <p class="section-desc">
+      PyTorch uses a global seed. JAX threads explicit PRNG keys through every call,
+      making randomness reproducible and composable with <code>jit</code> / <code>vmap</code>.
+    </p>
+    <div class="compare">
+      <div class="panel torch">
+        <div class="panel-header"><span class="dot"></span>PyTorch</div>
+        <pre><code class="language-python">torch.manual_seed(42)        # global state
+
+model = VanillaRNNModel(
+    input_size=1,
+    hidden_size=64,
+    output_size=1,
+)</code></pre>
+      </div>
+      <div class="panel jax">
+        <div class="panel-header"><span class="dot"></span>JAX / Flax NNX</div>
+        <pre><code class="language-python">import jax
+
+model = VanillaRNNModel(
+    input_size=1,
+    hidden_size=64,
+    output_size=1,
+    rngs=nnx.Rngs(params=jax.random.PRNGKey(42)),
+    # each rngs.params() call derives a child key
+)</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ── Block 4: Training step ─────────────────────────────────── -->
+  <div class="section" id="block4">
+    <div class="section-title"><span class="block-num">Block 4</span> Training Step</div>
+    <p class="section-desc">
+      PyTorch requires the zero-grad / backward / step ritual.
+      In JAX, <code>nnx.value_and_grad</code> computes loss and gradients in one call;
+      <code>optimizer.update</code> applies the update. No gradient accumulation means no <code>zero_grad</code>.
+    </p>
+    <div class="compare">
+      <div class="panel torch">
+        <div class="panel-header"><span class="dot"></span>PyTorch</div>
+        <pre><code class="language-python">import torch.optim as optim
+
+optimizer = optim.Adam(model.parameters(), lr=1e-3)
+
+def train_step(model, optimizer, xs, targets):
+    optimizer.zero_grad()           # 1. clear old grads
+    preds = model(xs)
+    loss = ((preds - targets) ** 2).mean()
+    loss.backward()                 # 2. accumulate grads
+    optimizer.step()                # 3. apply update
+    return loss.item()</code></pre>
+      </div>
+      <div class="panel jax">
+        <div class="panel-header"><span class="dot"></span>JAX / Flax NNX</div>
+        <pre><code class="language-python">import optax
+
+optimizer = nnx.Optimizer(
+    model, optax.adam(1e-3), wrt=nnx.Param
+)
+
+def loss_fn(model, batch):
+    preds = model(batch["inputs"])
+    return jnp.mean((preds - batch["targets"]) ** 2)
+
+@nnx.jit
+def train_step(model, optimizer, batch):
+    loss, grads = nnx.value_and_grad(loss_fn)(model, batch)
+    optimizer.update(model, grads)  # mutates model in-place
+    return loss                     # no zero_grad needed</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ── Block 5: JIT ───────────────────────────────────────────── -->
+  <div class="section" id="block5">
+    <div class="section-title"><span class="block-num">Block 5</span> JIT Compilation</div>
+    <p class="section-desc">
+      Both frameworks support JIT. JAX traces through Python on the first call for a given input
+      shape and caches the compiled binary; avoid data-dependent Python <code>if</code> / <code>for</code>
+      inside JIT — use <code>lax.cond</code> / <code>lax.scan</code> instead.
+    </p>
+    <div class="compare">
+      <div class="panel torch">
+        <div class="panel-header"><span class="dot"></span>PyTorch</div>
+        <pre><code class="language-python"># torch.compile wraps the whole model (PyTorch 2.0+)
+model = torch.compile(model)
+
+# Training loop is unchanged
+for xs, targets in dataloader:
+    loss = train_step(model, optimizer, xs, targets)</code></pre>
+      </div>
+      <div class="panel jax">
+        <div class="panel-header"><span class="dot"></span>JAX / Flax NNX</div>
+        <pre><code class="language-python"># @nnx.jit decorates the FUNCTION, not the model.
+# Compiled on first call; reused for same shapes.
+@nnx.jit
+def train_step(model, optimizer, batch):
+    loss, grads = nnx.value_and_grad(loss_fn)(model, batch)
+    optimizer.update(model, grads)
+    return loss
+
+# First call triggers compilation (slow).
+# All subsequent calls use the cached binary (fast).
+for batch in batches:
+    loss = train_step(model, optimizer, batch)</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ── Block 6: Gradient clipping ────────────────────────────── -->
+  <div class="section" id="block6">
+    <div class="section-title"><span class="block-num">Block 6</span> Optimizer with Gradient Clipping</div>
+    <p class="section-desc">
+      PyTorch clips gradients as a separate call between <code>backward</code> and <code>step</code>.
+      Optax composes transforms with <code>optax.chain</code> — clipping is baked into the optimizer
+      definition, so <code>train_step</code> is unchanged.
+    </p>
+    <div class="compare">
+      <div class="panel torch">
+        <div class="panel-header"><span class="dot"></span>PyTorch</div>
+        <pre><code class="language-python">optimizer = optim.Adam(model.parameters(), lr=1e-3)
+
+def train_step(model, optimizer, xs, targets):
+    optimizer.zero_grad()
+    loss = ((model(xs) - targets) ** 2).mean()
+    loss.backward()
+    # clip before step
+    torch.nn.utils.clip_grad_norm_(
+        model.parameters(), max_norm=1.0
+    )
+    optimizer.step()
+    return loss.item()</code></pre>
+      </div>
+      <div class="panel jax">
+        <div class="panel-header"><span class="dot"></span>JAX / Optax</div>
+        <pre><code class="language-python">tx = optax.chain(
+    optax.clip_by_global_norm(1.0),   # clip first
+    optax.adam(1e-3),                  # then update
+)
+optimizer = nnx.Optimizer(model, tx, wrt=nnx.Param)
+
+# train_step is IDENTICAL to Block 4 — no change needed
+@nnx.jit
+def train_step(model, optimizer, batch):
+    loss, grads = nnx.value_and_grad(loss_fn)(model, batch)
+    optimizer.update(model, grads)   # clipping applied here
+    return loss</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ── Full training loop ─────────────────────────────────────── -->
+  <div class="section" id="full-loop">
+    <div class="section-title">Full Training Loop</div>
+    <p class="section-desc">Everything assembled end-to-end.</p>
+    <div class="compare">
+      <div class="panel torch">
+        <div class="panel-header"><span class="dot"></span>PyTorch</div>
+        <pre><code class="language-python">import torch, torch.nn as nn, torch.optim as optim
+
+torch.manual_seed(42)
+model = VanillaRNNModel(
+    input_size=1, hidden_size=64, output_size=1
+)
+optimizer = optim.Adam(model.parameters(), lr=1e-3)
+
+for step in range(500):
+    xs, targets = get_batch()      # (B, T, 1)
+    optimizer.zero_grad()
+    loss = ((model(xs) - targets) ** 2).mean()
+    loss.backward()
+    optimizer.step()
+    if (step + 1) % 50 == 0:
+        print(f"step {step+1}  loss={loss.item():.4f}")</code></pre>
+      </div>
+      <div class="panel jax">
+        <div class="panel-header"><span class="dot"></span>JAX / Flax NNX</div>
+        <pre><code class="language-python">import jax, jax.numpy as jnp, flax.nnx as nnx, optax
+
+model = VanillaRNNModel(
+    input_size=1, hidden_size=64, output_size=1,
+    rngs=nnx.Rngs(params=jax.random.PRNGKey(42)),
+)
+optimizer = nnx.Optimizer(model, optax.adam(1e-3), wrt=nnx.Param)
+
+def loss_fn(model, batch):
+    return jnp.mean((model(batch["inputs"]) - batch["targets"]) ** 2)
+
+@nnx.jit
+def train_step(model, optimizer, batch):
+    loss, grads = nnx.value_and_grad(loss_fn)(model, batch)
+    optimizer.update(model, grads)
+    return loss
+
+key = jax.random.PRNGKey(0)
+for step in range(500):
+    key, subkey = jax.random.split(key)
+    batch = get_batch(subkey)      # pass key explicitly
+    loss = train_step(model, optimizer, batch)
+    if (step + 1) % 50 == 0:
+        print(f"step {step+1}  loss={float(loss):.4f}")</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- ── Quick reference ────────────────────────────────────────── -->
+  <div class="section" id="ref">
+    <div class="section-title">Quick Reference</div>
+    <table class="ref-table">
+      <thead>
+        <tr>
+          <th>Task</th>
+          <th>PyTorch</th>
+          <th>JAX / Flax NNX</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Define module</td><td><code>class M(nn.Module)</code></td><td><code>class M(nnx.Module)</code></td></tr>
+        <tr><td>Declare parameter</td><td><code>nn.Parameter(tensor)</code></td><td><code>nnx.Param(array)</code></td></tr>
+        <tr><td>Forward method</td><td><code>def forward(self, x)</code></td><td><code>def __call__(self, x)</code></td></tr>
+        <tr><td>Random init</td><td><code>torch.manual_seed(n)</code></td><td><code>nnx.Rngs(params=PRNGKey(n))</code></td></tr>
+        <tr><td>Sequence loop</td><td><code>for t in range(T)</code></td><td><code>jax.lax.scan(step, h0, xs)</code></td></tr>
+        <tr><td>Batch parallelism</td><td>Built into ops</td><td><code>jax.vmap(fn)(batch)</code></td></tr>
+        <tr><td>Compute gradient</td><td><code>loss.backward()</code></td><td><code>nnx.value_and_grad(fn)(model, batch)</code></td></tr>
+        <tr><td>Apply gradient</td><td><code>optimizer.step()</code></td><td><code>optimizer.update(model, grads)</code></td></tr>
+        <tr><td>Clear gradient</td><td><code>optimizer.zero_grad()</code></td><td>Not needed</td></tr>
+        <tr><td>JIT compile</td><td><code>torch.compile(model)</code></td><td><code>@nnx.jit</code> on function</td></tr>
+        <tr><td>Gradient clipping</td><td><code>clip_grad_norm_(...)</code></td><td><code>optax.chain(clip_by_global_norm(…), adam(…))</code></td></tr>
+        <tr><td>Device placement</td><td><code>tensor.to(device)</code></td><td>Automatic; set via <code>jax.default_device()</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div><!-- /page-wrap -->
+</body>
+</html>
