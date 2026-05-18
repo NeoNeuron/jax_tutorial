@@ -12,7 +12,7 @@ A hands-on tutorial for ML practitioners who know PyTorch and want to learn JAX 
 | `04_vanilla_rnn` | Vanilla RNN cell in Flax NNX, trained with Optax | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NeoNeuron/jax_tutorial/blob/main/notebooks/04_vanilla_rnn.ipynb) |
 | `05_lowrank_rnn` | Low-rank RNN (`W = MN^T`, rank-r constraint by construction) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NeoNeuron/jax_tutorial/blob/main/notebooks/05_lowrank_rnn.ipynb) |
 | `06_training_pipeline` | Train loop, checkpointing with Orbax | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NeoNeuron/jax_tutorial/blob/main/notebooks/06_training_pipeline.ipynb) |
-| `07_pytorch_comparison` | Load identical weights → assert `max|JAX − PyTorch| < 1e-5` | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NeoNeuron/jax_tutorial/blob/main/notebooks/07_pytorch_comparison.ipynb) |
+| `07_pytorch_comparison` | Load identical weights → assert max diff JAX vs PyTorch < 1e-5 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NeoNeuron/jax_tutorial/blob/main/notebooks/07_pytorch_comparison.ipynb) |
 | `08_benchmarks` | Timing sweeps, plots from `benchmarks/run_benchmarks.py` | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/NeoNeuron/jax_tutorial/blob/main/notebooks/08_benchmarks.ipynb) |
 
 ## Quick Start
