@@ -4,10 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PyTorch → JAX/Flax Migration Guide</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
-<script>hljs.highlightAll();</script>
 <style>
   /* ── Reset & base ─────────────────────────────────────────────── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -146,7 +142,7 @@
     padding: 0 !important;
     overflow-x: auto;
   }
-  .panel pre code.hljs {
+  .panel pre code {
     padding: 16px !important;
     border-radius: 0 !important;
   }
@@ -252,6 +248,92 @@
     border-top: 1px solid #e2e8f0;
     margin: 48px 0;
   }
+pre { line-height: 125%; }
+td.linenos .normal { color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px; }
+span.linenos { color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px; }
+td.linenos .special { color: #000000; background-color: #ffffc0; padding-left: 5px; padding-right: 5px; }
+span.linenos.special { color: #000000; background-color: #ffffc0; padding-left: 5px; padding-right: 5px; }
+pre code .hll { background-color: #ffffcc }
+pre code { background: #282C34; color: #ABB2BF }
+pre code .c { color: #7F848E } /* Comment */
+pre code .err { color: #ABB2BF } /* Error */
+pre code .esc { color: #ABB2BF } /* Escape */
+pre code .g { color: #ABB2BF } /* Generic */
+pre code .k { color: #C678DD } /* Keyword */
+pre code .l { color: #ABB2BF } /* Literal */
+pre code .n { color: #E06C75 } /* Name */
+pre code .o { color: #56B6C2 } /* Operator */
+pre code .x { color: #ABB2BF } /* Other */
+pre code .p { color: #ABB2BF } /* Punctuation */
+pre code .ch { color: #7F848E } /* Comment.Hashbang */
+pre code .cm { color: #7F848E } /* Comment.Multiline */
+pre code .cp { color: #7F848E } /* Comment.Preproc */
+pre code .cpf { color: #7F848E } /* Comment.PreprocFile */
+pre code .c1 { color: #7F848E } /* Comment.Single */
+pre code .cs { color: #7F848E } /* Comment.Special */
+pre code .gd { color: #E06C75 } /* Generic.Deleted */
+pre code .ge { color: #ABB2BF; font-style: italic } /* Generic.Emph */
+pre code .ges { color: #ABB2BF } /* Generic.EmphStrong */
+pre code .gr { color: #E06C75 } /* Generic.Error */
+pre code .gh { color: #ABB2BF; font-weight: bold } /* Generic.Heading */
+pre code .gi { color: #98C379 } /* Generic.Inserted */
+pre code .go { color: #E06C75 } /* Generic.Output */
+pre code .gp { color: #ABB2BF } /* Generic.Prompt */
+pre code .gs { color: #ABB2BF; font-weight: bold } /* Generic.Strong */
+pre code .gu { color: #ABB2BF; font-weight: bold } /* Generic.Subheading */
+pre code .gt { color: #E06C75 } /* Generic.Traceback */
+pre code .kc { color: #E5C07B } /* Keyword.Constant */
+pre code .kd { color: #C678DD } /* Keyword.Declaration */
+pre code .kn { color: #C678DD } /* Keyword.Namespace */
+pre code .kp { color: #C678DD } /* Keyword.Pseudo */
+pre code .kr { color: #C678DD } /* Keyword.Reserved */
+pre code .kt { color: #E5C07B } /* Keyword.Type */
+pre code .ld { color: #ABB2BF } /* Literal.Date */
+pre code .m { color: #D19A66 } /* Literal.Number */
+pre code .s { color: #98C379 } /* Literal.String */
+pre code .na { color: #E06C75 } /* Name.Attribute */
+pre code .nb { color: #E5C07B } /* Name.Builtin */
+pre code .nc { color: #E5C07B } /* Name.Class */
+pre code .no { color: #E06C75 } /* Name.Constant */
+pre code .nd { color: #61AFEF } /* Name.Decorator */
+pre code .ni { color: #E06C75 } /* Name.Entity */
+pre code .ne { color: #E06C75 } /* Name.Exception */
+pre code .nf { color: #61AFEF; font-weight: bold } /* Name.Function */
+pre code .nl { color: #E06C75 } /* Name.Label */
+pre code .nn { color: #E06C75 } /* Name.Namespace */
+pre code .nx { color: #E06C75 } /* Name.Other */
+pre code .py { color: #E06C75 } /* Name.Property */
+pre code .nt { color: #E06C75 } /* Name.Tag */
+pre code .nv { color: #E06C75 } /* Name.Variable */
+pre code .ow { color: #56B6C2 } /* Operator.Word */
+pre code .pm { color: #ABB2BF } /* Punctuation.Marker */
+pre code .w { color: #ABB2BF } /* Text.Whitespace */
+pre code .mb { color: #D19A66 } /* Literal.Number.Bin */
+pre code .mf { color: #D19A66 } /* Literal.Number.Float */
+pre code .mh { color: #D19A66 } /* Literal.Number.Hex */
+pre code .mi { color: #D19A66 } /* Literal.Number.Integer */
+pre code .mo { color: #D19A66 } /* Literal.Number.Oct */
+pre code .sa { color: #98C379 } /* Literal.String.Affix */
+pre code .sb { color: #98C379 } /* Literal.String.Backtick */
+pre code .sc { color: #98C379 } /* Literal.String.Char */
+pre code .dl { color: #98C379 } /* Literal.String.Delimiter */
+pre code .sd { color: #98C379 } /* Literal.String.Doc */
+pre code .s2 { color: #98C379 } /* Literal.String.Double */
+pre code .se { color: #98C379 } /* Literal.String.Escape */
+pre code .sh { color: #98C379 } /* Literal.String.Heredoc */
+pre code .si { color: #98C379 } /* Literal.String.Interpol */
+pre code .sx { color: #98C379 } /* Literal.String.Other */
+pre code .sr { color: #98C379 } /* Literal.String.Regex */
+pre code .s1 { color: #98C379 } /* Literal.String.Single */
+pre code .ss { color: #98C379 } /* Literal.String.Symbol */
+pre code .bp { color: #E5C07B } /* Name.Builtin.Pseudo */
+pre code .fm { color: #56B6C2; font-weight: bold } /* Name.Function.Magic */
+pre code .vc { color: #E06C75 } /* Name.Variable.Class */
+pre code .vg { color: #E06C75 } /* Name.Variable.Global */
+pre code .vi { color: #E06C75 } /* Name.Variable.Instance */
+pre code .vm { color: #E06C75 } /* Name.Variable.Magic */
+pre code .il { color: #D19A66 } /* Literal.Number.Integer.Long */
+pre code { display: block; background: #282c34; color: #abb2bf; padding: 16px; font-size: 0.82rem; line-height: 1.55; overflow-x: auto; border-radius: 0; }
 </style>
 </head>
 <body>
@@ -313,68 +395,70 @@
     <div class="compare">
       <div class="panel torch">
         <div class="panel-header"><span class="dot"></span>PyTorch</div>
-        <pre><code class="language-python">import torch
-import torch.nn as nn
+        <pre><code class="language-python"><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
 
-class VanillaRNNCell(nn.Module):
-    def __init__(
-        self, input_size, hidden_size, alpha=0.2
-    ):
-        super().__init__()        # required
-        self.hidden_size = hidden_size
-        self.alpha = alpha
-        std = 1.0 / (hidden_size ** 0.5)
+<span class="k">class</span><span class="w"> </span><span class="nc">VanillaRNNCell</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">input_size</span><span class="p">,</span> <span class="n">hidden_size</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span>
+    <span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>        <span class="c1"># required</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hidden_size</span> <span class="o">=</span> <span class="n">hidden_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+        <span class="n">std</span> <span class="o">=</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">hidden_size</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">)</span>
 
-        self.W    = nn.Parameter(
-            torch.randn(hidden_size, hidden_size) * std
-        )
-        self.W_in = nn.Parameter(
-            torch.randn(hidden_size, input_size) * std
-        )
-        self.b    = nn.Parameter(
-            torch.zeros(hidden_size)
-        )
+        <span class="bp">self</span><span class="o">.</span><span class="n">W</span>    <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">hidden_size</span><span class="p">,</span> <span class="n">hidden_size</span><span class="p">)</span> <span class="o">*</span> <span class="n">std</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">W_in</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">randn</span><span class="p">(</span><span class="n">hidden_size</span><span class="p">,</span> <span class="n">input_size</span><span class="p">)</span> <span class="o">*</span> <span class="n">std</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">b</span>    <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Parameter</span><span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">hidden_size</span><span class="p">)</span>
+        <span class="p">)</span>
 
-    def forward(self, h, x):
-        pre = (
-            torch.tanh(h) @ self.W.T
-            + x @ self.W_in.T
-            + self.b
-        )
-        return (1.0 - self.alpha) * h + self.alpha * pre</code></pre>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="n">pre</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">tanh</span><span class="p">(</span><span class="n">h</span><span class="p">)</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="o">.</span><span class="n">T</span>
+            <span class="o">+</span> <span class="n">x</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">W_in</span><span class="o">.</span><span class="n">T</span>
+            <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span> <span class="o">*</span> <span class="n">h</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">pre</span>
+</code></pre>
       </div>
       <div class="panel jax">
         <div class="panel-header"><span class="dot"></span>JAX / Flax NNX</div>
-        <pre><code class="language-python">import jax.numpy as jnp
-import flax.nnx as nnx
+        <pre><code class="language-python"><span class="kn">import</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">flax.nnx</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nnx</span>
 
-class VanillaRNNCell(nnx.Module):
-    def __init__(
-        self, input_size, hidden_size,
-        rngs: nnx.Rngs,             # explicit PRNG handle
-        alpha=0.2
-    ):
-        # no super().__init__() needed
-        self.hidden_size = hidden_size
-        self.alpha = alpha
-        init = nnx.initializers.normal(
-            stddev=1.0 / (hidden_size ** 0.5)
-        )
-        self.W    = nnx.Param(
-            init(rngs.params(), (hidden_size, hidden_size))
-        )
-        self.W_in = nnx.Param(
-            init(rngs.params(), (hidden_size, input_size))
-        )
-        self.b    = nnx.Param(jnp.zeros((hidden_size,)))
+<span class="k">class</span><span class="w"> </span><span class="nc">VanillaRNNCell</span><span class="p">(</span><span class="n">nnx</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">input_size</span><span class="p">,</span> <span class="n">hidden_size</span><span class="p">,</span>
+        <span class="n">rngs</span><span class="p">:</span> <span class="n">nnx</span><span class="o">.</span><span class="n">Rngs</span><span class="p">,</span>             <span class="c1"># explicit PRNG handle</span>
+        <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span>
+    <span class="p">):</span>
+        <span class="c1"># no super().__init__() needed</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hidden_size</span> <span class="o">=</span> <span class="n">hidden_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
+        <span class="n">init</span> <span class="o">=</span> <span class="n">nnx</span><span class="o">.</span><span class="n">initializers</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span>
+            <span class="n">stddev</span><span class="o">=</span><span class="mf">1.0</span> <span class="o">/</span> <span class="p">(</span><span class="n">hidden_size</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">W</span>    <span class="o">=</span> <span class="n">nnx</span><span class="o">.</span><span class="n">Param</span><span class="p">(</span>
+            <span class="n">init</span><span class="p">(</span><span class="n">rngs</span><span class="o">.</span><span class="n">params</span><span class="p">(),</span> <span class="p">(</span><span class="n">hidden_size</span><span class="p">,</span> <span class="n">hidden_size</span><span class="p">))</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">W_in</span> <span class="o">=</span> <span class="n">nnx</span><span class="o">.</span><span class="n">Param</span><span class="p">(</span>
+            <span class="n">init</span><span class="p">(</span><span class="n">rngs</span><span class="o">.</span><span class="n">params</span><span class="p">(),</span> <span class="p">(</span><span class="n">hidden_size</span><span class="p">,</span> <span class="n">input_size</span><span class="p">))</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">b</span>    <span class="o">=</span> <span class="n">nnx</span><span class="o">.</span><span class="n">Param</span><span class="p">(</span><span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">hidden_size</span><span class="p">,)))</span>
 
-    def __call__(self, h, x):       # forward → __call__
-        pre = (
-            jnp.tanh(h) @ self.W.T
-            + x @ self.W_in.T
-            + self.b
-        )
-        return (1.0 - self.alpha) * h + self.alpha * pre</code></pre>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>       <span class="c1"># forward → __call__</span>
+        <span class="n">pre</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">jnp</span><span class="o">.</span><span class="n">tanh</span><span class="p">(</span><span class="n">h</span><span class="p">)</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">W</span><span class="o">.</span><span class="n">T</span>
+            <span class="o">+</span> <span class="n">x</span> <span class="o">@</span> <span class="bp">self</span><span class="o">.</span><span class="n">W_in</span><span class="o">.</span><span class="n">T</span>
+            <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="mf">1.0</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span> <span class="o">*</span> <span class="n">h</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">pre</span>
+</code></pre>
       </div>
     </div>
   </div>
@@ -398,52 +482,54 @@ class VanillaRNNCell(nnx.Module):
     <div class="compare">
       <div class="panel torch">
         <div class="panel-header"><span class="dot"></span>PyTorch — Python for-loop</div>
-        <pre><code class="language-python">class VanillaRNN(nn.Module):
-    def __init__(self, input_size, hidden_size, alpha=0.2):
-        super().__init__()
-        self.cell = VanillaRNNCell(input_size, hidden_size, alpha)
-        self.hidden_size = hidden_size
+        <pre><code class="language-python"><span class="k">class</span><span class="w"> </span><span class="nc">VanillaRNN</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_size</span><span class="p">,</span> <span class="n">hidden_size</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cell</span> <span class="o">=</span> <span class="n">VanillaRNNCell</span><span class="p">(</span><span class="n">input_size</span><span class="p">,</span> <span class="n">hidden_size</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hidden_size</span> <span class="o">=</span> <span class="n">hidden_size</span>
 
-    def forward(self, xs, h0=None):
-        B, T, _ = xs.shape
-        h = (
-            torch.zeros(B, self.hidden_size, device=xs.device)
-            if h0 is None else h0
-        )
-        outputs = []
-        for t in range(T):          # T kernel dispatches
-            h = self.cell(h, xs[:, t])
-            outputs.append(h)
-        # stack list → tensor
-        return torch.stack(outputs, dim=1), h</code></pre>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">h0</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">B</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">xs</span><span class="o">.</span><span class="n">shape</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">xs</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">h0</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">h0</span>
+        <span class="p">)</span>
+        <span class="n">outputs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">T</span><span class="p">):</span>          <span class="c1"># T kernel dispatches</span>
+            <span class="n">h</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">xs</span><span class="p">[:,</span> <span class="n">t</span><span class="p">])</span>
+            <span class="n">outputs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+        <span class="c1"># stack list → tensor</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">outputs</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">h</span>
+</code></pre>
       </div>
       <div class="panel jax">
         <div class="panel-header"><span class="dot"></span>JAX — vmap + lax.scan</div>
-        <pre><code class="language-python">class VanillaRNN(nnx.Module):
-    def __init__(self, input_size, hidden_size, rngs, alpha=0.2):
-        self.cell = VanillaRNNCell(input_size, hidden_size, rngs, alpha)
-        self.hidden_size = hidden_size
+        <pre><code class="language-python"><span class="k">class</span><span class="w"> </span><span class="nc">VanillaRNN</span><span class="p">(</span><span class="n">nnx</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_size</span><span class="p">,</span> <span class="n">hidden_size</span><span class="p">,</span> <span class="n">rngs</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cell</span> <span class="o">=</span> <span class="n">VanillaRNNCell</span><span class="p">(</span><span class="n">input_size</span><span class="p">,</span> <span class="n">hidden_size</span><span class="p">,</span> <span class="n">rngs</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hidden_size</span> <span class="o">=</span> <span class="n">hidden_size</span>
 
-    def __call__(self, xs, h0=None):
-        B, T, _ = xs.shape
-        if h0 is None:
-            h0 = jnp.zeros((B, self.hidden_size))
+    <span class="k">def</span><span class="w"> </span><span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">h0</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">B</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">xs</span><span class="o">.</span><span class="n">shape</span>
+        <span class="k">if</span> <span class="n">h0</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">h0</span> <span class="o">=</span> <span class="n">jnp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">hidden_size</span><span class="p">))</span>
 
-        # extract params once; constant across vmap + scan
-        graphdef, state = nnx.split(self.cell)
+        <span class="c1"># extract params once; constant across vmap + scan</span>
+        <span class="n">graphdef</span><span class="p">,</span> <span class="n">state</span> <span class="o">=</span> <span class="n">nnx</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">)</span>
 
-        def run_single(x_seq, h_init):
-            # processes ONE sequence: x_seq (T, I), h_init (H,)
-            def step(h, x):
-                cell = nnx.merge(graphdef, state)
-                return cell(h, x), cell(h, x)   # carry, output
-            h_final, outputs = jax.lax.scan(
-                step, h_init, x_seq             # 1 kernel dispatch
-            )
-            return outputs, h_final
+        <span class="k">def</span><span class="w"> </span><span class="nf">run_single</span><span class="p">(</span><span class="n">x_seq</span><span class="p">,</span> <span class="n">h_init</span><span class="p">):</span>
+            <span class="c1"># processes ONE sequence: x_seq (T, I), h_init (H,)</span>
+            <span class="k">def</span><span class="w"> </span><span class="nf">step</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+                <span class="n">cell</span> <span class="o">=</span> <span class="n">nnx</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">graphdef</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">cell</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">x</span><span class="p">),</span> <span class="n">cell</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>   <span class="c1"># carry, output</span>
+            <span class="n">h_final</span><span class="p">,</span> <span class="n">outputs</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">lax</span><span class="o">.</span><span class="n">scan</span><span class="p">(</span>
+                <span class="n">step</span><span class="p">,</span> <span class="n">h_init</span><span class="p">,</span> <span class="n">x_seq</span>             <span class="c1"># 1 kernel dispatch</span>
+            <span class="p">)</span>
+            <span class="k">return</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">h_final</span>
 
-        # vmap maps run_single over the batch axis
-        return jax.vmap(run_single)(xs, h0)     # (B,T,H), (B,H)</code></pre>
+        <span class="c1"># vmap maps run_single over the batch axis</span>
+        <span class="k">return</span> <span class="n">jax</span><span class="o">.</span><span class="n">vmap</span><span class="p">(</span><span class="n">run_single</span><span class="p">)(</span><span class="n">xs</span><span class="p">,</span> <span class="n">h0</span><span class="p">)</span>     <span class="c1"># (B,T,H), (B,H)</span>
+</code></pre>
       </div>
     </div>
   </div>
@@ -460,25 +546,27 @@ class VanillaRNNCell(nnx.Module):
     <div class="compare">
       <div class="panel torch">
         <div class="panel-header"><span class="dot"></span>PyTorch</div>
-        <pre><code class="language-python">torch.manual_seed(42)        # global state
+        <pre><code class="language-python"><span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>        <span class="c1"># global state</span>
 
-model = VanillaRNNModel(
-    input_size=1,
-    hidden_size=64,
-    output_size=1,
-)</code></pre>
+<span class="n">model</span> <span class="o">=</span> <span class="n">VanillaRNNModel</span><span class="p">(</span>
+    <span class="n">input_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">hidden_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
+    <span class="n">output_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre>
       </div>
       <div class="panel jax">
         <div class="panel-header"><span class="dot"></span>JAX / Flax NNX</div>
-        <pre><code class="language-python">import jax
+        <pre><code class="language-python"><span class="kn">import</span><span class="w"> </span><span class="nn">jax</span>
 
-model = VanillaRNNModel(
-    input_size=1,
-    hidden_size=64,
-    output_size=1,
-    rngs=nnx.Rngs(params=jax.random.PRNGKey(42)),
-    # each rngs.params() call derives a child key
-)</code></pre>
+<span class="n">model</span> <span class="o">=</span> <span class="n">VanillaRNNModel</span><span class="p">(</span>
+    <span class="n">input_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">hidden_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
+    <span class="n">output_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">rngs</span><span class="o">=</span><span class="n">nnx</span><span class="o">.</span><span class="n">Rngs</span><span class="p">(</span><span class="n">params</span><span class="o">=</span><span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">PRNGKey</span><span class="p">(</span><span class="mi">42</span><span class="p">)),</span>
+    <span class="c1"># each rngs.params() call derives a child key</span>
+<span class="p">)</span>
+</code></pre>
       </div>
     </div>
   </div>
@@ -496,35 +584,37 @@ model = VanillaRNNModel(
     <div class="compare">
       <div class="panel torch">
         <div class="panel-header"><span class="dot"></span>PyTorch</div>
-        <pre><code class="language-python">import torch.optim as optim
+        <pre><code class="language-python"><span class="kn">import</span><span class="w"> </span><span class="nn">torch.optim</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">optim</span>
 
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
 
-def train_step(model, optimizer, xs, targets):
-    optimizer.zero_grad()           # 1. clear old grads
-    preds = model(xs)
-    loss = ((preds - targets) ** 2).mean()
-    loss.backward()                 # 2. accumulate grads
-    optimizer.step()                # 3. apply update
-    return loss.item()</code></pre>
+<span class="k">def</span><span class="w"> </span><span class="nf">train_step</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">targets</span><span class="p">):</span>
+    <span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>           <span class="c1"># 1. clear old grads</span>
+    <span class="n">preds</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="p">((</span><span class="n">preds</span> <span class="o">-</span> <span class="n">targets</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>                 <span class="c1"># 2. accumulate grads</span>
+    <span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>                <span class="c1"># 3. apply update</span>
+    <span class="k">return</span> <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+</code></pre>
       </div>
       <div class="panel jax">
         <div class="panel-header"><span class="dot"></span>JAX / Flax NNX</div>
-        <pre><code class="language-python">import optax
+        <pre><code class="language-python"><span class="kn">import</span><span class="w"> </span><span class="nn">optax</span>
 
-optimizer = nnx.Optimizer(
-    model, optax.adam(1e-3), wrt=nnx.Param
-)
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">nnx</span><span class="o">.</span><span class="n">Optimizer</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">,</span> <span class="n">optax</span><span class="o">.</span><span class="n">adam</span><span class="p">(</span><span class="mf">1e-3</span><span class="p">),</span> <span class="n">wrt</span><span class="o">=</span><span class="n">nnx</span><span class="o">.</span><span class="n">Param</span>
+<span class="p">)</span>
 
-def loss_fn(model, batch):
-    preds = model(batch["inputs"])
-    return jnp.mean((preds - batch["targets"]) ** 2)
+<span class="k">def</span><span class="w"> </span><span class="nf">loss_fn</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
+    <span class="n">preds</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">batch</span><span class="p">[</span><span class="s2">&quot;inputs&quot;</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">preds</span> <span class="o">-</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;targets&quot;</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
 
-@nnx.jit
-def train_step(model, optimizer, batch):
-    loss, grads = nnx.value_and_grad(loss_fn)(model, batch)
-    optimizer.update(model, grads)  # mutates model in-place
-    return loss                     # no zero_grad needed</code></pre>
+<span class="nd">@nnx</span><span class="o">.</span><span class="n">jit</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">train_step</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
+    <span class="n">loss</span><span class="p">,</span> <span class="n">grads</span> <span class="o">=</span> <span class="n">nnx</span><span class="o">.</span><span class="n">value_and_grad</span><span class="p">(</span><span class="n">loss_fn</span><span class="p">)(</span><span class="n">model</span><span class="p">,</span> <span class="n">batch</span><span class="p">)</span>
+    <span class="n">optimizer</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">grads</span><span class="p">)</span>  <span class="c1"># mutates model in-place</span>
+    <span class="k">return</span> <span class="n">loss</span>                     <span class="c1"># no zero_grad needed</span>
+</code></pre>
       </div>
     </div>
   </div>
@@ -542,27 +632,29 @@ def train_step(model, optimizer, batch):
     <div class="compare">
       <div class="panel torch">
         <div class="panel-header"><span class="dot"></span>PyTorch</div>
-        <pre><code class="language-python"># torch.compile wraps the whole model (PyTorch 2.0+)
-model = torch.compile(model)
+        <pre><code class="language-python"><span class="c1"># torch.compile wraps the whole model (PyTorch 2.0+)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
 
-# Training loop is unchanged
-for xs, targets in dataloader:
-    loss = train_step(model, optimizer, xs, targets)</code></pre>
+<span class="c1"># Training loop is unchanged</span>
+<span class="k">for</span> <span class="n">xs</span><span class="p">,</span> <span class="n">targets</span> <span class="ow">in</span> <span class="n">dataloader</span><span class="p">:</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="n">train_step</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">targets</span><span class="p">)</span>
+</code></pre>
       </div>
       <div class="panel jax">
         <div class="panel-header"><span class="dot"></span>JAX / Flax NNX</div>
-        <pre><code class="language-python"># @nnx.jit decorates the FUNCTION, not the model.
-# Compiled on first call; reused for same shapes.
-@nnx.jit
-def train_step(model, optimizer, batch):
-    loss, grads = nnx.value_and_grad(loss_fn)(model, batch)
-    optimizer.update(model, grads)
-    return loss
+        <pre><code class="language-python"><span class="c1"># @nnx.jit decorates the FUNCTION, not the model.</span>
+<span class="c1"># Compiled on first call; reused for same shapes.</span>
+<span class="nd">@nnx</span><span class="o">.</span><span class="n">jit</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">train_step</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
+    <span class="n">loss</span><span class="p">,</span> <span class="n">grads</span> <span class="o">=</span> <span class="n">nnx</span><span class="o">.</span><span class="n">value_and_grad</span><span class="p">(</span><span class="n">loss_fn</span><span class="p">)(</span><span class="n">model</span><span class="p">,</span> <span class="n">batch</span><span class="p">)</span>
+    <span class="n">optimizer</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">grads</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">loss</span>
 
-# First call triggers compilation (slow).
-# All subsequent calls use the cached binary (fast).
-for batch in batches:
-    loss = train_step(model, optimizer, batch)</code></pre>
+<span class="c1"># First call triggers compilation (slow).</span>
+<span class="c1"># All subsequent calls use the cached binary (fast).</span>
+<span class="k">for</span> <span class="n">batch</span> <span class="ow">in</span> <span class="n">batches</span><span class="p">:</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="n">train_step</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">batch</span><span class="p">)</span>
+</code></pre>
       </div>
     </div>
   </div>
@@ -580,33 +672,35 @@ for batch in batches:
     <div class="compare">
       <div class="panel torch">
         <div class="panel-header"><span class="dot"></span>PyTorch</div>
-        <pre><code class="language-python">optimizer = optim.Adam(model.parameters(), lr=1e-3)
+        <pre><code class="language-python"><span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
 
-def train_step(model, optimizer, xs, targets):
-    optimizer.zero_grad()
-    loss = ((model(xs) - targets) ** 2).mean()
-    loss.backward()
-    # clip before step
-    torch.nn.utils.clip_grad_norm_(
-        model.parameters(), max_norm=1.0
-    )
-    optimizer.step()
-    return loss.item()</code></pre>
+<span class="k">def</span><span class="w"> </span><span class="nf">train_step</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">targets</span><span class="p">):</span>
+    <span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="p">((</span><span class="n">model</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span> <span class="o">-</span> <span class="n">targets</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+    <span class="c1"># clip before step</span>
+    <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">clip_grad_norm_</span><span class="p">(</span>
+        <span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">max_norm</span><span class="o">=</span><span class="mf">1.0</span>
+    <span class="p">)</span>
+    <span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+</code></pre>
       </div>
       <div class="panel jax">
         <div class="panel-header"><span class="dot"></span>JAX / Optax</div>
-        <pre><code class="language-python">tx = optax.chain(
-    optax.clip_by_global_norm(1.0),   # clip first
-    optax.adam(1e-3),                  # then update
-)
-optimizer = nnx.Optimizer(model, tx, wrt=nnx.Param)
+        <pre><code class="language-python"><span class="n">tx</span> <span class="o">=</span> <span class="n">optax</span><span class="o">.</span><span class="n">chain</span><span class="p">(</span>
+    <span class="n">optax</span><span class="o">.</span><span class="n">clip_by_global_norm</span><span class="p">(</span><span class="mf">1.0</span><span class="p">),</span>   <span class="c1"># clip first</span>
+    <span class="n">optax</span><span class="o">.</span><span class="n">adam</span><span class="p">(</span><span class="mf">1e-3</span><span class="p">),</span>                  <span class="c1"># then update</span>
+<span class="p">)</span>
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">nnx</span><span class="o">.</span><span class="n">Optimizer</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">tx</span><span class="p">,</span> <span class="n">wrt</span><span class="o">=</span><span class="n">nnx</span><span class="o">.</span><span class="n">Param</span><span class="p">)</span>
 
-# train_step is IDENTICAL to Block 4 — no change needed
-@nnx.jit
-def train_step(model, optimizer, batch):
-    loss, grads = nnx.value_and_grad(loss_fn)(model, batch)
-    optimizer.update(model, grads)   # clipping applied here
-    return loss</code></pre>
+<span class="c1"># train_step is IDENTICAL to Block 4 — no change needed</span>
+<span class="nd">@nnx</span><span class="o">.</span><span class="n">jit</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">train_step</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
+    <span class="n">loss</span><span class="p">,</span> <span class="n">grads</span> <span class="o">=</span> <span class="n">nnx</span><span class="o">.</span><span class="n">value_and_grad</span><span class="p">(</span><span class="n">loss_fn</span><span class="p">)(</span><span class="n">model</span><span class="p">,</span> <span class="n">batch</span><span class="p">)</span>
+    <span class="n">optimizer</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">grads</span><span class="p">)</span>   <span class="c1"># clipping applied here</span>
+    <span class="k">return</span> <span class="n">loss</span>
+</code></pre>
       </div>
     </div>
   </div>
@@ -620,49 +714,51 @@ def train_step(model, optimizer, batch):
     <div class="compare">
       <div class="panel torch">
         <div class="panel-header"><span class="dot"></span>PyTorch</div>
-        <pre><code class="language-python">import torch, torch.nn as nn, torch.optim as optim
+        <pre><code class="language-python"><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span><span class="o">,</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span><span class="o">,</span><span class="w"> </span><span class="nn">torch.optim</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">optim</span>
 
-torch.manual_seed(42)
-model = VanillaRNNModel(
-    input_size=1, hidden_size=64, output_size=1
-)
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
+<span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">VanillaRNNModel</span><span class="p">(</span>
+    <span class="n">input_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">hidden_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">output_size</span><span class="o">=</span><span class="mi">1</span>
+<span class="p">)</span>
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
 
-for step in range(500):
-    xs, targets = get_batch()      # (B, T, 1)
-    optimizer.zero_grad()
-    loss = ((model(xs) - targets) ** 2).mean()
-    loss.backward()
-    optimizer.step()
-    if (step + 1) % 50 == 0:
-        print(f"step {step+1}  loss={loss.item():.4f}")</code></pre>
+<span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">500</span><span class="p">):</span>
+    <span class="n">xs</span><span class="p">,</span> <span class="n">targets</span> <span class="o">=</span> <span class="n">get_batch</span><span class="p">()</span>      <span class="c1"># (B, T, 1)</span>
+    <span class="n">optimizer</span><span class="o">.</span><span class="n">zero_grad</span><span class="p">()</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="p">((</span><span class="n">model</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span> <span class="o">-</span> <span class="n">targets</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">loss</span><span class="o">.</span><span class="n">backward</span><span class="p">()</span>
+    <span class="n">optimizer</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">step</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">50</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;step </span><span class="si">{</span><span class="n">step</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">  loss=</span><span class="si">{</span><span class="n">loss</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre>
       </div>
       <div class="panel jax">
         <div class="panel-header"><span class="dot"></span>JAX / Flax NNX</div>
-        <pre><code class="language-python">import jax, jax.numpy as jnp, flax.nnx as nnx, optax
+        <pre><code class="language-python"><span class="kn">import</span><span class="w"> </span><span class="nn">jax</span><span class="o">,</span><span class="w"> </span><span class="nn">jax.numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">jnp</span><span class="o">,</span><span class="w"> </span><span class="nn">flax.nnx</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nnx</span><span class="o">,</span><span class="w"> </span><span class="nn">optax</span>
 
-model = VanillaRNNModel(
-    input_size=1, hidden_size=64, output_size=1,
-    rngs=nnx.Rngs(params=jax.random.PRNGKey(42)),
-)
-optimizer = nnx.Optimizer(model, optax.adam(1e-3), wrt=nnx.Param)
+<span class="n">model</span> <span class="o">=</span> <span class="n">VanillaRNNModel</span><span class="p">(</span>
+    <span class="n">input_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">hidden_size</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">output_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">rngs</span><span class="o">=</span><span class="n">nnx</span><span class="o">.</span><span class="n">Rngs</span><span class="p">(</span><span class="n">params</span><span class="o">=</span><span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">PRNGKey</span><span class="p">(</span><span class="mi">42</span><span class="p">)),</span>
+<span class="p">)</span>
+<span class="n">optimizer</span> <span class="o">=</span> <span class="n">nnx</span><span class="o">.</span><span class="n">Optimizer</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">optax</span><span class="o">.</span><span class="n">adam</span><span class="p">(</span><span class="mf">1e-3</span><span class="p">),</span> <span class="n">wrt</span><span class="o">=</span><span class="n">nnx</span><span class="o">.</span><span class="n">Param</span><span class="p">)</span>
 
-def loss_fn(model, batch):
-    return jnp.mean((model(batch["inputs"]) - batch["targets"]) ** 2)
+<span class="k">def</span><span class="w"> </span><span class="nf">loss_fn</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">jnp</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">model</span><span class="p">(</span><span class="n">batch</span><span class="p">[</span><span class="s2">&quot;inputs&quot;</span><span class="p">])</span> <span class="o">-</span> <span class="n">batch</span><span class="p">[</span><span class="s2">&quot;targets&quot;</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
 
-@nnx.jit
-def train_step(model, optimizer, batch):
-    loss, grads = nnx.value_and_grad(loss_fn)(model, batch)
-    optimizer.update(model, grads)
-    return loss
+<span class="nd">@nnx</span><span class="o">.</span><span class="n">jit</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">train_step</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">batch</span><span class="p">):</span>
+    <span class="n">loss</span><span class="p">,</span> <span class="n">grads</span> <span class="o">=</span> <span class="n">nnx</span><span class="o">.</span><span class="n">value_and_grad</span><span class="p">(</span><span class="n">loss_fn</span><span class="p">)(</span><span class="n">model</span><span class="p">,</span> <span class="n">batch</span><span class="p">)</span>
+    <span class="n">optimizer</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">grads</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">loss</span>
 
-key = jax.random.PRNGKey(0)
-for step in range(500):
-    key, subkey = jax.random.split(key)
-    batch = get_batch(subkey)      # pass key explicitly
-    loss = train_step(model, optimizer, batch)
-    if (step + 1) % 50 == 0:
-        print(f"step {step+1}  loss={float(loss):.4f}")</code></pre>
+<span class="n">key</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">PRNGKey</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">500</span><span class="p">):</span>
+    <span class="n">key</span><span class="p">,</span> <span class="n">subkey</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+    <span class="n">batch</span> <span class="o">=</span> <span class="n">get_batch</span><span class="p">(</span><span class="n">subkey</span><span class="p">)</span>      <span class="c1"># pass key explicitly</span>
+    <span class="n">loss</span> <span class="o">=</span> <span class="n">train_step</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">,</span> <span class="n">batch</span><span class="p">)</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">step</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">50</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;step </span><span class="si">{</span><span class="n">step</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">  loss=</span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">loss</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</code></pre>
       </div>
     </div>
   </div>
